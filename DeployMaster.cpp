@@ -148,7 +148,7 @@ void DeployMaster::onDeployClicked()
         QMetaObject::invokeMethod(this, "appendFtpLog", Qt::QueuedConnection,
             Q_ARG(QString, QString("🎉 批量部署完成！")));
         QMetaObject::invokeMethod(this, "appendFtpLog", Qt::QueuedConnection,
-            Q_ARG(QString, QString("📊 部署成功: %1 | 部署失败: %2").arg(deploySuccesses.size(), deployFailures.size())));
+            Q_ARG(QString, QString("📊 部署成功: %1 | 部署失败: %2").arg(deploySuccesses.size()).arg(deployFailures.size())));
         if (deployFailures.size() > 0) {
             QMetaObject::invokeMethod(this, "appendFtpLog", Qt::QueuedConnection,
                 Q_ARG(QString, QString("❌ 失败列表:").arg(deployFailures.join(", "))));
