@@ -3,6 +3,8 @@
 
 #include <QDirIterator>
 #include <QFileInfo>
+#include <QRegularExpression>
+#include <QDateTime>
 #include <QDebug>
 #include <QUrl>
 
@@ -12,6 +14,123 @@ struct FtpContext {
     FtpManager::ProgressCallback progress;
 };
 
+static qint64 parseListSize(const QString& line)
+{
+    QStringList parts = line.trimmed().split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+    if (parts.size() >= 5) {
+        bool ok = false;
+        qint64 size = parts[4].toLongLong(&ok); // Unix LIST: ... size ...
+        return ok ? size : -1;
+    }
+    return -1;
+}
+
+static QString parseListFilename(const QString& line)
+{
+    QStringList parts = line.trimmed().split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+    if (parts.size() >= 9) {
+        return parts.mid(8).join(" ");
+    }
+    return QString();
+}
+
+// 辅助：从 LIST 行解析时间和文件名（Unix 风格）
+static QDateTime parseListTime(const QString& line)
+{
+    // Unix LIST 示例: -rw-r--r-- 1 user group 1234 Jan 10 12:34 app.log
+    // 注意：年份可能省略，需智能判断
+    QRegularExpression re(R"(\S+\s+\d+\s+\S+\s+\S+\s+\d+\s+(\w{3})\s+(\d{1,2})\s+([\d:]+)\s+(.+))");
+    QRegularExpressionMatch match = re.match(line.trimmed());
+    if (!match.hasMatch()) return QDateTime();
+
+    QString monthStr = match.captured(1);
+    int day = match.captured(2).toInt();
+    QString timeOrYear = match.captured(3); // 可能是 "12:34" 或 "2025"
+
+    // 月份映射
+    QStringList months = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+    int month = months.indexOf(monthStr) + 1;
+    if (month == 0) return QDateTime();
+
+    QDate date;
+    QTime time;
+
+    if (timeOrYear.contains(':')) {
+        // 格式: HH:mm → 属于今年或去年
+        time = QTime::fromString(timeOrYear, "hh:mm");
+        int currentYear = QDate::currentDate().year();
+        date = QDate(currentYear, month, day);
+        // 如果日期在未来（如 12月查1月），说明是去年
+        if (date > QDate::currentDate()) {
+            date = QDate(currentYear - 1, month, day);
+        }
+    }
+    else {
+        // 格式: YYYY
+        int year = timeOrYear.toInt();
+        date = QDate(year, month, day);
+        time = QTime(0, 0);
+    }
+
+    return QDateTime(date, time);
+}
+
+// 回调：收集 LIST 输出
+static size_t listWriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
+{
+    size_t total = size * nmemb;
+    QByteArray* buffer = static_cast<QByteArray*>(userp);
+    buffer->append(static_cast<char*>(contents), total);
+    return total;
+}
+
+QList<FtpFileInfo> FtpManager::listFtpDirectoryDetailed(const QString& remoteDir)
+{
+    QList<FtpFileInfo> result;
+    QByteArray output;
+
+    // 确保路径以 '/' 结尾（表示目录）
+    QString dirPath = remoteDir;
+    if (!dirPath.endsWith('/')) {
+        dirPath += '/';
+    }
+
+    curl_easy_setopt(curl_, CURLOPT_URL,
+        QString("ftp://%1:%2%3").arg(host_).arg(port_).arg(dirPath).toUtf8().constData());
+    curl_easy_setopt(curl_, CURLOPT_USERNAME, user_.toUtf8().constData());
+    curl_easy_setopt(curl_, CURLOPT_PASSWORD, pass_.toUtf8().constData());
+    curl_easy_setopt(curl_, CURLOPT_DIRLISTONLY, 0L); // 关键：获取完整 LIST
+    curl_easy_setopt(curl_, CURLOPT_CUSTOMREQUEST, "LIST"); // 显式使用 LIST
+    curl_easy_setopt(curl_, CURLOPT_WRITEFUNCTION, listWriteCallback);
+    curl_easy_setopt(curl_, CURLOPT_WRITEDATA, &output);
+
+    CURLcode res = curl_easy_perform(curl_);
+    if (res != CURLE_OK) {
+        throw std::runtime_error(std::string("LIST failed: ") + curl_easy_strerror(res));
+    }
+
+    // 解析 LIST 输出
+    QStringList lines = QString::fromUtf8(output).split('\n', Qt::SkipEmptyParts);
+    for (const QString& line : lines) {
+        if (line.trimmed().isEmpty()) continue;
+
+        QString filename = parseListFilename(line);
+        if (filename.isEmpty() || filename == "." || filename == "..") continue;
+
+        qint64 size = parseListSize(line);
+        QDateTime modTime = parseListTime(line);
+
+        FtpFileInfo info;
+        info.remotePath = dirPath;
+        info.name = filename;
+        info.size = size;
+        info.lastModified = modTime;
+        result << info;
+    }
+
+    return result;
+}
 size_t readCallback(void* ptr, size_t size, size_t nmemb, void* userdata) 
 {
     FtpContext* ctx = static_cast<FtpContext*>(userdata);
@@ -35,6 +154,16 @@ int progressCallback(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_o
         ctx->progress(ulnow, ultotal > 0 ? ultotal : ctx->total);
     }
     return 0;
+}
+
+
+// 回调函数：收集 MLSD 输出行
+static size_t mlsdWriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
+{
+    size_t total = size * nmemb;
+    QByteArray* buffer = static_cast<QByteArray*>(userp);
+    buffer->append(static_cast<char*>(contents), total);
+    return total;
 }
 
 FtpManager::FtpManager(const QString& host, quint16 port, const QString& user, const QString& pass)
@@ -259,6 +388,56 @@ QString FtpManager::buildRemoteFilePath(const QString& remoteDir, const QString&
     if (cleanDir.endsWith('/')) cleanDir.chop(1);
 
     return cleanDir.isEmpty() ? fileName : cleanDir + "/" + fileName;
+}
+
+size_t writeData(void* ptr, size_t size, size_t nmemb, QFile* stream)
+{
+    stream->write(static_cast<char*>(ptr), size * nmemb);
+    return size * nmemb;
+}
+
+size_t FtpManager::progressCallback(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
+{
+    auto callback = static_cast<ProgressCallback*>(clientp);
+    if (*callback && dltotal > 0) {
+        (*callback)(static_cast<qint64>(dlnow), static_cast<qint64>(dltotal));
+    }
+    return 0;
+}
+
+void FtpManager::downloadFile(const QString& remotePath, const QString& localPath,
+    const ProgressCallback& progress)
+{
+    QFileInfo fileInfo(localPath);
+    QDir().mkpath(fileInfo.absolutePath());
+
+    QFile localFile(localPath);
+    if (!localFile.open(QIODevice::WriteOnly))
+        throw std::runtime_error("无法创建本地文件: " + localPath.toStdString());
+
+    QString url = QString("ftp://%1:%2%3").arg(host_).arg(port_).arg(remotePath);
+    curl_easy_setopt(curl_, CURLOPT_URL, url.toUtf8().constData());
+    curl_easy_setopt(curl_, CURLOPT_USERNAME, user_.toUtf8().constData());
+    curl_easy_setopt(curl_, CURLOPT_PASSWORD, pass_.toUtf8().constData());
+    curl_easy_setopt(curl_, CURLOPT_WRITEFUNCTION, writeData);
+    curl_easy_setopt(curl_, CURLOPT_WRITEDATA, &localFile);
+
+    if (progress) {
+        curl_easy_setopt(curl_, CURLOPT_NOPROGRESS, 0L);
+        curl_easy_setopt(curl_, CURLOPT_XFERINFOFUNCTION, progressCallback);
+        curl_easy_setopt(curl_, CURLOPT_XFERINFODATA, &progress);
+    }
+    else {
+        curl_easy_setopt(curl_, CURLOPT_NOPROGRESS, 1L);
+    }
+
+    CURLcode res = curl_easy_perform(curl_);
+    localFile.close();
+
+    if (res != CURLE_OK) {
+        localFile.remove(); // 删除失败文件
+        throw std::runtime_error(std::string("下载失败: ") + curl_easy_strerror(res));
+    }
 }
 
 FtpManager::~FtpManager() {
