@@ -102,6 +102,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="FtpRemoteItem.h" />
+    <ClCompile Include="LogQueryTab.cpp" />
     <ClCompile Include="TelnetClient.cpp" />
     <QtRcc Include="DeployMaster.qrc" />
     <QtUic Include="BatchDeploy.ui" />
@@ -111,6 +112,7 @@
     <ClCompile Include="FileDeploy.cpp" />
     <ClCompile Include="FtpManager.cpp" />
     <ClCompile Include="main.cpp" />
+    <QtUic Include="tab_logquery.ui" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="TelnetClient.h" />
@@ -118,6 +120,7 @@
     <QtMoc Include="DropListWidget.h" />
     <ClInclude Include="FileDeploy.h" />
     <ClInclude Include="FtpManager.h" />
+    <QtMoc Include="LogQueryTab.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

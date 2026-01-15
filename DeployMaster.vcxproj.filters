@@ -52,6 +52,9 @@
     <ClCompile Include="FtpRemoteItem.h">
       <Filter>Header Files</Filter>
     </ClCompile>
+    <ClCompile Include="LogQueryTab.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FileDeploy.h">
@@ -73,6 +76,9 @@
     <QtUic Include="BatchDeploy.ui">
       <Filter>Form Files</Filter>
     </QtUic>
+    <QtUic Include="tab_logquery.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="DeployMaster.h">
@@ -82,6 +88,9 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="TelnetClient.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="LogQueryTab.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>

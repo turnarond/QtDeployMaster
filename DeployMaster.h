@@ -2,8 +2,10 @@
 
 #include <QtWidgets/QMainWindow>
 #include "ui_DeployMaster.h"
+#include "ui_tab_logquery.h"
 #include "FtpRemoteItem.h"
 #include "FtpManager.h"
+#include "LogQueryTab.h"
 
 class DeployMaster : public QMainWindow
 {
@@ -12,6 +14,9 @@ class DeployMaster : public QMainWindow
 public:
     DeployMaster(QWidget* parent = nullptr);
     ~DeployMaster();
+
+public:
+    QStringList getTargetIPList() const;
 
 private:
     QString lastUsedDirectory; // 记录上次使用的目录
@@ -24,6 +29,8 @@ private:
 
 public slots:
     void appendFtpLog(const QString& log);
+    void ftpUserFinished(QString str);
+    void ftpPassFinished(QString str);
 
 private slots:
     // Add your custom slots here
@@ -39,7 +46,11 @@ private slots:
         bool shouldReboot,
         const QString& user,
         const QString& pass);
+
+private:
+    void setupLogQueryTab();
 private:
     Ui::DeployMaster ui;
+    LogQueryTab* m_logQueryTab = nullptr;
 };
 
