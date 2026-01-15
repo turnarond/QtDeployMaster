@@ -12,6 +12,8 @@ DeployMaster::DeployMaster(QWidget* parent)
 {
     ui.setupUi(this);
 
+    setupLogQueryTab();
+
     QApplication::setStyle(QStyleFactory::create("Fusion"));
 
     connect(ui.btn_addFiles, &QPushButton::clicked, this, &DeployMaster::onAddFilesClicked);
@@ -21,6 +23,21 @@ DeployMaster::DeployMaster(QWidget* parent)
 
     connect(ui.btn_deploy, &QPushButton::clicked, this, &DeployMaster::onDeployClicked);
     connect(ui.btn_clearLog, &QPushButton::clicked, this, &DeployMaster::onClearLogClicked);
+
+    connect(ui.txt_user, SIGNAL(editingFinished()), this, SLOT(ftpUserFinished()));
+    connect(ui.txt_pass, SIGNAL(editingFinished()), this, SLOT(ftpPassFinished()));
+
+}
+
+// 在初始化函数中（如 setupUi 后）
+void DeployMaster::setupLogQueryTab()
+{
+    m_logQueryTab = new LogQueryTab(ui.txt_ipList->toPlainText(), this);
+    m_logQueryTab->setFtpUserPasswd(ui.txt_user->text().trimmed(),
+        ui.txt_pass->text().trimmed());
+    // 添加到主窗口的 tabWidget
+    ui.tabWidget->addTab(m_logQueryTab, tr("日志查询"));
+
 }
 
 void DeployMaster::onAddFilesClicked()
@@ -268,6 +285,16 @@ void DeployMaster::appendFtpLog(const QString& log)
     ui.txt_globalLog->append(log);
 }
 
+void DeployMaster::ftpUserFinished(QString str)
+{
+    m_logQueryTab->setFtpUserPasswd(str, ui.txt_pass->text().trimmed());
+}
+
+void DeployMaster::ftpPassFinished(QString str)
+{
+    m_logQueryTab->setFtpUserPasswd(ui.txt_user->text().trimmed(), str);
+}
+
 QStringList DeployMaster::getTargetIPs()
 {
     QStringList ips;
@@ -287,6 +314,13 @@ QStringList DeployMaster::getTargetIPs()
     }
 
     return ips;
+}
+
+QStringList DeployMaster::getTargetIPList() const
+{
+    QString text = ui.txt_ipList->toPlainText().trimmed();
+    if (text.isEmpty()) return {};
+    return text.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
 }
 
 DeployMaster::~DeployMaster()
