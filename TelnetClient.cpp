@@ -167,6 +167,11 @@ void TelnetClient::onReadyRead()
     QString response = QString::fromUtf8(cleanData).trimmed();
     qDebug() << "Telnet RX:" << response;
 
+    // emit received data for consumers
+    if (!response.isEmpty()) {
+        emit dataReceived(response);
+    }
+
     switch (m_state) {
     case AwaitingLogin:
         if (response.contains("login:", Qt::CaseInsensitive) ||
