@@ -6,6 +6,10 @@
 #include <QString>
 #include <QtConcurrent/QtConcurrent>
 #include <QStyleFactory>
+#include <QStandardItemModel>
+#include <QStandardItem>
+
+#include "OpcUaClient.h" // add header
 
 DeployMaster::DeployMaster(QWidget* parent)
     : QMainWindow(parent)
@@ -13,6 +17,12 @@ DeployMaster::DeployMaster(QWidget* parent)
     ui.setupUi(this);
 
     setupLogQueryTab();
+
+    setupTelnetDeployTab();
+
+    setupModbusClusterTab();
+
+    setupOpcUaClientTab(); // register OPC UA tab
 
     QApplication::setStyle(QStyleFactory::create("Fusion"));
 
@@ -24,20 +34,38 @@ DeployMaster::DeployMaster(QWidget* parent)
     connect(ui.btn_deploy, &QPushButton::clicked, this, &DeployMaster::onDeployClicked);
     connect(ui.btn_clearLog, &QPushButton::clicked, this, &DeployMaster::onClearLogClicked);
 
-    connect(ui.txt_user, SIGNAL(editingFinished()), this, SLOT(ftpUserFinished()));
-    connect(ui.txt_pass, SIGNAL(editingFinished()), this, SLOT(ftpPassFinished()));
+    // 初始化远端预览功能
+    setupRemotePreview();
 
 }
 
 // 在初始化函数中（如 setupUi 后）
 void DeployMaster::setupLogQueryTab()
 {
-    m_logQueryTab = new LogQueryTab(ui.txt_ipList->toPlainText(), this);
-    m_logQueryTab->setFtpUserPasswd(ui.txt_user->text().trimmed(),
-        ui.txt_pass->text().trimmed());
+    m_logQueryTab = new LogQueryTab(this);
     // 添加到主窗口的 tabWidget
     ui.tabWidget->addTab(m_logQueryTab, tr("日志查询"));
 
+}
+
+void DeployMaster::setupTelnetDeployTab()
+{
+    m_telnetDeployTab = new TelnetDeploy(this);
+    ui.tabWidget->addTab(m_telnetDeployTab, tr("批量命令"));
+}
+
+void DeployMaster::setupModbusClusterTab()
+{
+    m_modbusCluster = new ModbusCluster(this);
+    ui.tabWidget->addTab(m_modbusCluster, tr("MODBUS测试"));
+}
+
+// new: setup for opc ua
+void DeployMaster::setupOpcUaClientTab()
+{
+    // OpcUaClientTab is optional and uses placeholder implementation
+    OpcUaClientTab* opcTab = new OpcUaClientTab(this);
+    ui.tabWidget->addTab(opcTab, tr("OPC UA 客户端"));
 }
 
 void DeployMaster::onAddFilesClicked()
@@ -122,7 +150,7 @@ void DeployMaster::onDeployClicked()
                         Q_ARG(QString, QString("🧹 正在清空远程路径: %1").arg(remotePath)));
                     ftpm.clearRemoteDirectory(remotePath);
                     QMetaObject::invokeMethod(this, "appendFtpLog", Qt::QueuedConnection,
-                        Q_ARG(QString, "✅ 远程路径已清空"));
+                        Q_ARG(QString, QString("✅ 远程路径已清空")));
                 }
                 catch (const std::exception& ex) {
                     QMetaObject::invokeMethod(this, "appendFtpLog", Qt::QueuedConnection,
@@ -285,16 +313,6 @@ void DeployMaster::appendFtpLog(const QString& log)
     ui.txt_globalLog->append(log);
 }
 
-void DeployMaster::ftpUserFinished(QString str)
-{
-    m_logQueryTab->setFtpUserPasswd(str, ui.txt_pass->text().trimmed());
-}
-
-void DeployMaster::ftpPassFinished(QString str)
-{
-    m_logQueryTab->setFtpUserPasswd(ui.txt_user->text().trimmed(), str);
-}
-
 QStringList DeployMaster::getTargetIPs()
 {
     QStringList ips;
@@ -325,4 +343,118 @@ QStringList DeployMaster::getTargetIPList() const
 
 DeployMaster::~DeployMaster()
 {
+    // 清理远程文件模型
+    if (remoteFileModel) {
+        delete remoteFileModel;
+        remoteFileModel = nullptr;
+    }
+}
+
+void DeployMaster::setupRemotePreview()
+{
+    // 初始化远程文件模型
+    remoteFileModel = new QStandardItemModel(this);
+    ui.tree_remoteFiles->setModel(remoteFileModel);
+    
+    // 设置初始路径
+    currentRemotePath = "/apps/m580cn/bin/";
+    
+    // 连接信号槽
+    connect(ui.cmb_targetIPs, &QComboBox::currentTextChanged, this, &DeployMaster::onIPSelectionChanged);
+    connect(ui.btn_refreshRemote, &QPushButton::clicked, this, &DeployMaster::refreshRemoteFiles);
+    connect(ui.tree_remoteFiles, &QTreeView::doubleClicked, this, &DeployMaster::onRemoteFileDoubleClicked);
+    
+    // 初始化IP下拉框
+    QStringList ips = getTargetIPs();
+    ui.cmb_targetIPs->clear();
+    ui.cmb_targetIPs->addItems(ips);
+    
+    if (!ips.isEmpty()) {
+        currentRemoteIP = ips.first();
+        refreshRemoteFiles();
+    }
+}
+
+void DeployMaster::onIPSelectionChanged()
+{
+    currentRemoteIP = ui.cmb_targetIPs->currentText();
+    if (!currentRemoteIP.isEmpty()) {
+        refreshRemoteFiles();
+    }
+}
+
+void DeployMaster::refreshRemoteFiles()
+{
+    if (currentRemoteIP.isEmpty()) {
+        appendFtpLog("❌ 错误：请选择目标 IP！");
+        return;
+    }
+    
+    QString user = ui.txt_user->text().trimmed();
+    QString pass = ui.txt_pass->text().trimmed();
+    
+    if (user.isEmpty() || pass.isEmpty()) {
+        appendFtpLog("❌ 错误：请输入用户名和密码！");
+        return;
+    }
+    
+    appendFtpLog(QString("🔄 正在刷新远程文件列表: %1%2").arg(currentRemoteIP).arg(currentRemotePath));
+    
+    // 异步刷新远程文件列表
+    QtConcurrent::run([=]() {
+        try {
+            FtpManager ftpm(currentRemoteIP, 21, user, pass);
+            QList<FtpFileInfo> files = ftpm.listFtpDirectoryDetailed(currentRemotePath);
+            
+            // 在主线程更新UI
+            QMetaObject::invokeMethod(this, "buildRemoteFileTree", Qt::QueuedConnection, Q_ARG(QList<FtpFileInfo>, files));
+            QMetaObject::invokeMethod(this, "appendFtpLog", Qt::QueuedConnection, Q_ARG(QString, "✅ 远程文件列表刷新成功"));
+        } catch (const std::exception& ex) {
+            QMetaObject::invokeMethod(this, "appendFtpLog", Qt::QueuedConnection, Q_ARG(QString, QString("❌ 刷新失败: %1").arg(QString::fromStdString(ex.what()).left(100))));
+        }
+    });
+}
+
+void DeployMaster::buildRemoteFileTree(const QList<FtpFileInfo>& files)
+{
+    // 清空现有模型
+    remoteFileModel->clear();
+    
+    // 添加根目录项
+    QStandardItem* rootItem = new QStandardItem(QString("%1 (%2)").arg(currentRemoteIP).arg(currentRemotePath));
+    rootItem->setData(currentRemotePath, Qt::UserRole);
+    rootItem->setData(true, Qt::UserRole + 1); // 标记为目录
+    remoteFileModel->appendRow(rootItem);
+    
+    // 添加文件和文件夹
+    for (const FtpFileInfo& file : files) {
+        QStandardItem* item;
+        if (file.size == -1) { // 目录（size为-1表示可能是目录）
+            item = new QStandardItem(QString("📁 %1").arg(file.name));
+            item->setData(currentRemotePath + file.name + "/", Qt::UserRole);
+            item->setData(true, Qt::UserRole + 1); // 标记为目录
+        } else {
+            item = new QStandardItem(QString("📄 %1 (%2 bytes)").arg(file.name).arg(file.size));
+            item->setData(currentRemotePath + file.name, Qt::UserRole);
+            item->setData(false, Qt::UserRole + 1); // 标记为文件
+        }
+        rootItem->appendRow(item);
+    }
+    
+    // 展开根节点
+    ui.tree_remoteFiles->expandAll();
+}
+
+void DeployMaster::onRemoteFileDoubleClicked(const QModelIndex& index)
+{
+    QStandardItem* item = remoteFileModel->itemFromIndex(index);
+    if (!item) return;
+    
+    bool isDirectory = item->data(Qt::UserRole + 1).toBool();
+    if (isDirectory) {
+        QString path = item->data(Qt::UserRole).toString();
+        currentRemotePath = path;
+        appendFtpLog(QString("📁 进入目录: %1").arg(path));
+        refreshRemoteFiles();
+    }
 }
