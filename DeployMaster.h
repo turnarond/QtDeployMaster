@@ -4,6 +4,7 @@
 #include <QStandardItemModel>
 #include <QStandardItem>
 #include "ui_DeployMaster.h"
+#include "ui_tab_logquery.h"
 #include "FtpRemoteItem.h"
 #include "FtpManager.h"
 #include "LogQueryTab.h"
@@ -49,6 +50,8 @@ private:
 
 public slots:
     void appendFtpLog(const QString& log);
+    void ftpUserFinished(QString str);
+    void ftpPassFinished(QString str);
 
 private slots:
     // Add your custom slots here

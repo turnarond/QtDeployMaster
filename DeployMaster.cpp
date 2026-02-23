@@ -313,6 +313,16 @@ void DeployMaster::appendFtpLog(const QString& log)
     ui.txt_globalLog->append(log);
 }
 
+void DeployMaster::ftpUserFinished(QString str)
+{
+    m_logQueryTab->setFtpUserPasswd(str, ui.txt_pass->text().trimmed());
+}
+
+void DeployMaster::ftpPassFinished(QString str)
+{
+    m_logQueryTab->setFtpUserPasswd(ui.txt_user->text().trimmed(), str);
+}
+
 QStringList DeployMaster::getTargetIPs()
 {
     QStringList ips;
