@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>TabTelnetDeploy</class>
+ <widget class="QWidget" name="TabTelnetDeploy">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>784</width>
+    <height>631</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_telnet">
+   <item>
+    <widget class="QSplitter" name="splitter_telnetMain">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <widget class="QFrame" name="frame_telnetCmd">
+      <layout class="QVBoxLayout" name="verticalLayout_left">
+       <item>
+        <widget class="QGroupBox" name="groupBox_cmdTemplate">
+         <property name="title">
+          <string>命令模板（可选）</string>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_template">
+          <item>
+           <widget class="QComboBox" name="cmb_cmdTemplates">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <item>
+             <property name="text">
+              <string>自定义</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>查看系统信息 (uname -a; df -h)</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>检查进程 (ps aux | grep m580)</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn_saveAsTemplate">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>保存为模板</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox_commands">
+         <property name="title">
+          <string>要执行的命令（每行一条）</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_cmdEdit">
+          <item>
+           <widget class="QTextEdit" name="txt_telnetCommands">
+            <property name="font">
+             <font>
+              <family>Consolas</family>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="plainText">
+             <string>echo &quot;=== 开始执行于 {ip} ===&quot;
+cd /apps/m580cn/bin/
+./status.sh
+free -m</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox_telnetOptions">
+         <property name="title">
+          <string>执行选项</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_options">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_timeout">
+            <property name="text">
+             <string>命令超时（秒）：</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QSpinBox" name="spin_timeout">
+            <property name="minimum">
+             <number>5</number>
+            </property>
+            <property name="maximum">
+             <number>300</number>
+            </property>
+            <property name="value">
+             <number>30</number>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0" colspan="2">
+           <widget class="QCheckBox" name="chk_skipOnFailure">
+            <property name="text">
+             <string>某设备失败时继续执行其他设备</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2" colspan="2">
+           <widget class="QCheckBox" name="chk_showRawOutput">
+            <property name="text">
+             <string>显示原始 Telnet 交互（含登录过程）</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QFrame" name="frame_telnetResults">
+      <layout class="QVBoxLayout" name="verticalLayout_right">
+       <item>
+        <widget class="QGroupBox" name="groupBox_deviceStatus">
+         <property name="title">
+          <string>设备执行状态（双击查看详情）</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_tree">
+          <item>
+           <widget class="QTreeWidget" name="tree_telnetResults">
+            <property name="selectionMode">
+             <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+            </property>
+            <property name="headerHidden">
+             <bool>false</bool>
+            </property>
+            <column>
+             <property name="text">
+              <string>IP 地址</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>状态</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>耗时 (ms)</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>返回码/错误</string>
+             </property>
+            </column>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_outputDetail">
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>150</height>
+      </size>
+     </property>
+     <property name="title">
+      <string>命令输出详情（来自：192.168.2.124）</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_detail">
+      <item>
+       <widget class="QTextEdit" name="txt_outputDetail">
+        <property name="font">
+         <font>
+          <family>Consolas</family>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
+        <property name="lineWrapMode">
+         <enum>QTextEdit::LineWrapMode::NoWrap</enum>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_detailBtns">
+        <item>
+         <widget class="QPushButton" name="btn_copyOutput">
+          <property name="text">
+           <string>复制输出</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btn_saveOutput">
+          <property name="text">
+           <string>保存到文件</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_detail">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_telnetActions">
+     <item>
+      <widget class="QPushButton" name="btn_executeTelnet">
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: #2196F3; color: white; font-weight: bold;</string>
+       </property>
+       <property name="text">
+        <string>▶ 执行命令</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btn_stopTelnet">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>■ 停止</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btn_exportAllResults">
+       <property name="text">
+        <string>导出全部结果</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_telnet">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

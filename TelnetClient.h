@@ -29,6 +29,7 @@ signals:
     void commandSent();
     void error(const QString &msg);
     void disconnected();
+    void dataReceived(const QString &data); // emit received data
 
 private slots:
     void onReadyRead();

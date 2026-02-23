@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QDateTime>
 #include <QMap>
+#include <QTextEdit>
 #include <QStringList>
 #include "FtpManager.h" // 包含 FtpFileInfo 结构体定义
 
@@ -18,7 +19,7 @@ class LogQueryTab : public QWidget
     Q_OBJECT
 
 public:
-    explicit LogQueryTab(QString ips, DeployMaster* parentWindow, QWidget* parent = nullptr);
+    explicit LogQueryTab( DeployMaster* parentWindow, QWidget* parent = nullptr);
     ~LogQueryTab();
 
     // 获取当前查询参数（供主窗口调用）
@@ -28,10 +29,10 @@ public:
 
     void appendLogResult(const QString& ip, const QList<FtpFileInfo>& files);
     void clearResults();
-    void setFtpUserPasswd(const QString& user, const QString& pass) {
-        ftpUser = user;
-        ftpPass = pass;
-    };
+
+    void setGlobalLogWidget(QTextEdit* logWidget) {
+        txt_globalLog = logWidget;
+    }
 
 private:
     void downloadALogForIP(const QString& ip, const QString& remoteFile, const QString& saveDir);
@@ -56,8 +57,7 @@ private:
 private:
     Ui::TabLogQuery* ui;
     DeployMaster* m_mainWindow;
-    QMap<QString, QStringList> m_logFilesCache; // 缓存每个 IP 的日志文件列表
 
-    QString ftpUser = "root";
-    QString ftpPass = "root";
+    QMap<QString, QStringList> m_logFilesCache; // 缓存每个 IP 的日志文件列表
+    QTextEdit* txt_globalLog = nullptr;
 };

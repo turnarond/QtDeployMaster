@@ -18,11 +18,12 @@ find_package(Qt6 REQUIRED COMPONENTS
     Gui
     Widgets
     Network
+    SerialBus
 )
 
 set(LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 find_library(LIBCURL_IMPL_LIB
-    NAMES libcurl_impl libcurl_impl.lib
+    NAMES libcurl_imp libcurl_imp.lib
     PATHS ${LIB_DIR}
     NO_DEFAULT_PATH
 )
@@ -38,6 +39,10 @@ set(SOURCES
 	FileDeploy.cpp
 	FtpManager.cpp
 	TelnetClient.cpp
+	OpcUaClient.cpp
+	TelnetDeploy.cpp
+	LogQueryTab.cpp
+	ModbusCluster.cpp
 )
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -52,6 +57,7 @@ target_link_libraries(DeployMaster PRIVATE
     Qt6::Gui
     Qt6::Widgets
     Qt6::Network
+    Qt6::SerialBus
 	${LIBCURL_IMPL_LIB} 
 )
 
