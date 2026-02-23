@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+﻿﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -36,8 +36,7 @@
     <Import Project="$(QtMsBuild)\qt_defaults.props" />
   </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
-    <QtInstall>6.9.2_msvc2022_64</QtInstall>
-    <QtModules>core;gui;widgets;network</QtModules>
+    <QtModules>core;gui;network;widgets;serialbus</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
@@ -103,7 +102,10 @@
   <ItemGroup>
     <ClCompile Include="FtpRemoteItem.h" />
     <ClCompile Include="LogQueryTab.cpp" />
+    <ClCompile Include="ModbusCluster.cpp" />
+    <ClCompile Include="OpcUaClient.cpp" />
     <ClCompile Include="TelnetClient.cpp" />
+    <ClCompile Include="TelnetDeploy.cpp" />
     <QtRcc Include="DeployMaster.qrc" />
     <QtUic Include="BatchDeploy.ui" />
     <QtUic Include="DeployMaster.ui" />
@@ -112,15 +114,21 @@
     <ClCompile Include="FileDeploy.cpp" />
     <ClCompile Include="FtpManager.cpp" />
     <ClCompile Include="main.cpp" />
+    <QtUic Include="tab_modbus_cluster_test.ui" />
     <QtUic Include="tab_logquery.ui" />
+    <QtUic Include="tab_telnet.ui" />
   </ItemGroup>
   <ItemGroup>
+    <QtMoc Include="OpcUaClient.h" />
+    <ClInclude Include="ui_tab_opcua_client.h" />
+    <QtMoc Include="TelnetDeploy.h" />
     <QtMoc Include="TelnetClient.h" />
     <QtMoc Include="DeployMaster.h" />
     <QtMoc Include="DropListWidget.h" />
     <ClInclude Include="FileDeploy.h" />
     <ClInclude Include="FtpManager.h" />
     <QtMoc Include="LogQueryTab.h" />
+    <QtMoc Include="ModbusCluster.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

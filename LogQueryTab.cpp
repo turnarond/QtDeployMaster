@@ -9,33 +9,13 @@
 #include <QMessageBox>
 #include <QFileDialog>
 
-LogQueryTab::LogQueryTab(QString ips, DeployMaster* parentWindow, QWidget* parent)
+LogQueryTab::LogQueryTab(DeployMaster* parentWindow, QWidget* parent)
     : QWidget(parent)
     , ui(new Ui::TabLogQuery)
     , m_mainWindow(parentWindow)
 {
     ui->setupUi(this);
-
-    if (ui->txt_logIPList->toPlainText().trimmed().isEmpty()) {
-        ui->txt_logIPList->setPlainText(ips);
-    }
-
-    //// 移除 IP 输入区域（因为我们统一使用主窗口的 IP 列表）
-    //// 替换为提示信息
-    //ui->groupBox_targets->setTitle("目标设备");
-    //auto layout = ui->verticalLayout_targets;
-    //QLayoutItem* item;
-    //while ((item = layout->takeAt(0)) != nullptr) {
-    //    if (item->widget()) {
-    //        delete item->widget();
-    //    }
-    //    delete item;
-    //}
-
-    //QLabel* hint = new QLabel("目标设备 IP 列表", this);
-    ////QLabel* hint = new QLabel("使用`批量部署`页中的目标 IP 列表", this);
-    //hint->setStyleSheet("color: gray; font-style: italic;");
-    //layout->addWidget(hint);
+    txt_globalLog = m_mainWindow->getGlobalLogItem();
 
     // 连接按钮信号
     connect(ui->btn_queryLogs, &QPushButton::clicked, this, &LogQueryTab::on_btn_queryRequested);
@@ -136,6 +116,9 @@ void LogQueryTab::on_btn_queryRequested()
         return;
     }
 
+    QString ftpUser = m_mainWindow->getFtpUser();
+    QString ftpPass = m_mainWindow->getFtpPass();
+
     QString logDir = logPath();
     QDateTime start = startTime();
     QDateTime end = endTime();
@@ -186,6 +169,8 @@ void LogQueryTab::on_btn_queryRequested()
 void LogQueryTab::startDownloadTask(const QString& ip, const QString& remotePath,
     const QString& localPath, const QString& filename)
 {
+    QString ftpUser = m_mainWindow->getFtpUser();
+    QString ftpPass = m_mainWindow->getFtpPass();
     QtConcurrent::run([=]() {
         try {
             FtpManager ftp(ip, 21, ftpUser, ftpPass);
@@ -267,6 +252,9 @@ void LogQueryTab::on_btn_downloadSelected()
     QString saveDir = QFileDialog::getExistingDirectory(
         this, "选择保存目录", QDir::homePath()
     );
+    if (saveDir.isEmpty()) {
+        appendLog("❌ 未选择下载路径");
+    }
     for (QTreeWidgetItem* item : selected) {
         FtpFileInfo fileInfo = item->data(1, Qt::UserRole).value<FtpFileInfo>();
         QString ip = item->text(0);
@@ -360,23 +348,7 @@ void LogQueryTab::downloadALogForIP(const QString& ip, const QString& remoteFile
 
 QStringList LogQueryTab::getTargetIPs()
 {
-    QStringList ips;
-    QString text = ui->txt_logIPList->toPlainText(); // 适用于 QTextEdit 和 QPlainTextEdit
-
-    // 按行分割
-    QStringList lines = text.split('\n', Qt::SkipEmptyParts);
-
-    for (QString line : lines) {
-        line = line.trimmed(); // 去除首尾空格
-        if (!line.isEmpty()) {
-            // 可选：简单验证是否像 IP（增强健壮性）
-            // 例如：跳过明显无效的行（如包含字母、多个冒号等）
-            // 这里先只做基本过滤
-            ips << line;
-        }
-    }
-
-    return ips;
+    return m_mainWindow->getTargetIPList();
 }
 
 void LogQueryTab::onLogQueryResultReady(const QString& ip, const QList<FtpFileInfo>& files)
@@ -392,6 +364,6 @@ void LogQueryTab::onLogQueryResultReady(const QString& ip, const QList<FtpFileIn
 
 void LogQueryTab::appendLog(const QString& log)
 {
-    //ui->log->appendPlainText(log);
+    txt_globalLog->append(log);
 }
 

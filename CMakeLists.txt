@@ -38,6 +38,10 @@ set(SOURCES
 	FileDeploy.cpp
 	FtpManager.cpp
 	TelnetClient.cpp
+	OpcUaClient.cpp
+	TelnetDeploy.cpp
+	LogQueryTab.cpp
+	ModbusCluster.cpp
 )
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
