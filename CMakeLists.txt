@@ -45,7 +45,7 @@ target_include_directories(lwcomm
     PUBLIC  ${THIRDPARTY_DIR}/lwcomm ${THIRDPARTY_DIR}
     PRIVATE ${THIRDPARTY_DIR}/lwcomm/src
 )
-target_compile_definitions(lwcomm PRIVATE lwcomm_EXPORTS)
+target_compile_definitions(lwcomm PUBLIC lwcomm_EXPORTS)
 if(WIN32)
     target_link_libraries(lwcomm PUBLIC ws2_32 iphlpapi)
 endif()
@@ -80,7 +80,7 @@ target_include_directories(lwlog
     PUBLIC  ${THIRDPARTY_DIR}/lwlog ${THIRDPARTY_DIR}
     PRIVATE ${THIRDPARTY_DIR}/lwlog/src
 )
-target_compile_definitions(lwlog PRIVATE lwlog_EXPORTS)
+target_compile_definitions(lwlog PUBLIC lwlog_EXPORTS)
 target_link_libraries(lwlog PUBLIC lwcomm tinyxml2)
 
 # --- lwcommunicate（网络通信库） ---
@@ -124,6 +124,9 @@ set(SOURCES
     WebSocketClient.cpp
     # DiagnosticClient.cpp — 临时禁用: tinyvsoa 依赖缺失（待 Task 14 清理）
 
+    # 日志桥接
+    src/logging/LogBridge.cpp
+
     # 新框架文件
     src/framework/EventBus.cpp
     src/framework/ConnectionPool.cpp
@@ -154,7 +157,9 @@ target_link_libraries(DeployMaster PRIVATE
     Qt6::Network
     Qt6::SerialBus
     Qt6::WebSockets
-	${LIBCURL_IMPL_LIB} 
+    lwlog
+    lwcomm
+    ${LIBCURL_IMPL_LIB}
 )
 
 # 构建后复制 libcurl-x64.dll 到输出目录（运行时依赖）

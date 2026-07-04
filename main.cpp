@@ -3,11 +3,13 @@
 #include <QFile>
 #include <QTextStream>
 #include "src/utils/DeployEvent.h"
+#include "src/logging/LogBridge.h"
 // #include "src/presenter/FtpPresenter.h" — 临时禁用，待 Task 13
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+    LogBridge::install();  // Qt -> lwlog 日志桥接
 
     // 注册元类型
     qRegisterMetaType<DeployEvent>("DeployEvent");
