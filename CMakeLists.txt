@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # 项目名称和语言
-project(DeployMaster VERSION 1.0 LANGUAGES CXX)
+project(DeployMaster VERSION 1.0 LANGUAGES C CXX)
 
 # 启用 AUTOMOC、AUTOUIC、AUTORCC（自动处理 Qt 的 moc/uic/rcc）
 set(CMAKE_AUTOMOC ON)
@@ -32,6 +32,84 @@ if(NOT LIBCURL_IMPL_LIB)
     message(FATAL_ERROR "Could not find libcurl_imp.lib in ${LIB_DIR}")
 endif()
 
+# ============================================================
+# Thirdparty 静态库编译
+# 依赖链: lwcomm -> lwevent -> lwmsgq -> lwlog -> lwcommunicate -> lwserverbase
+# ============================================================
+set(THIRDPARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/thirdparty)
+
+# --- lwcomm（跨平台工具库） ---
+file(GLOB LWCOMM_SOURCES ${THIRDPARTY_DIR}/lwcomm/src/*.cpp)
+add_library(lwcomm STATIC ${LWCOMM_SOURCES})
+target_include_directories(lwcomm
+    PUBLIC  ${THIRDPARTY_DIR}/lwcomm ${THIRDPARTY_DIR}
+    PRIVATE ${THIRDPARTY_DIR}/lwcomm/src
+)
+target_compile_definitions(lwcomm PRIVATE lwcomm_EXPORTS)
+if(WIN32)
+    target_link_libraries(lwcomm PUBLIC ws2_32 iphlpapi)
+endif()
+
+# --- lwevent（事件信号） ---
+add_library(lwevent STATIC
+    ${THIRDPARTY_DIR}/lwevent/lwevent.c
+)
+target_include_directories(lwevent PUBLIC ${THIRDPARTY_DIR}/lwevent ${THIRDPARTY_DIR})
+target_compile_definitions(lwevent PRIVATE LWEVENT_EXPORTS)
+target_link_libraries(lwevent PUBLIC lwcomm)
+
+# --- lwmsgq（消息队列） ---
+add_library(lwmsgq STATIC
+    ${THIRDPARTY_DIR}/lwmsgq/lwmsgq.c
+    ${THIRDPARTY_DIR}/lwmsgq/list.c
+)
+target_include_directories(lwmsgq PUBLIC ${THIRDPARTY_DIR}/lwmsgq ${THIRDPARTY_DIR})
+target_link_libraries(lwmsgq PUBLIC lwcomm lwevent)
+
+# --- tinyxml2（XML 解析） ---
+# 必须放在 lwlog 之前，因为 lwlog 依赖 tinyxml2
+add_library(tinyxml2 STATIC
+    ${THIRDPARTY_DIR}/tinyxml2/tinyxml2.cpp
+)
+target_include_directories(tinyxml2 PUBLIC ${THIRDPARTY_DIR}/tinyxml2 ${THIRDPARTY_DIR})
+
+# --- lwlog（日志库） ---
+file(GLOB LWLOG_SOURCES ${THIRDPARTY_DIR}/lwlog/src/*.cpp)
+add_library(lwlog STATIC ${LWLOG_SOURCES})
+target_include_directories(lwlog
+    PUBLIC  ${THIRDPARTY_DIR}/lwlog ${THIRDPARTY_DIR}
+    PRIVATE ${THIRDPARTY_DIR}/lwlog/src
+)
+target_compile_definitions(lwlog PRIVATE lwlog_EXPORTS)
+target_link_libraries(lwlog PUBLIC lwcomm tinyxml2)
+
+# --- lwcommunicate（网络通信库） ---
+file(GLOB LWCOMMUNICATE_ALL ${THIRDPARTY_DIR}/lwcommunicate/*.cpp)
+list(FILTER LWCOMMUNICATE_ALL EXCLUDE REGEX "lwconn_test\\.cpp$")
+add_library(lwcommunicate STATIC ${LWCOMMUNICATE_ALL})
+target_include_directories(lwcommunicate PUBLIC ${THIRDPARTY_DIR}/lwcommunicate ${THIRDPARTY_DIR})
+target_compile_definitions(lwcommunicate PRIVATE NOMINMAX)
+target_link_libraries(lwcommunicate PUBLIC lwcomm lwlog lwevent)
+
+# --- nanopb（Protobuf 编解码） ---
+add_library(nanopb STATIC
+    ${THIRDPARTY_DIR}/nanopb/pb_encode.c
+    ${THIRDPARTY_DIR}/nanopb/pb_decode.c
+    ${THIRDPARTY_DIR}/nanopb/pb_common.c
+)
+target_include_directories(nanopb PUBLIC ${THIRDPARTY_DIR}/nanopb ${THIRDPARTY_DIR})
+
+# --- lwserverbase（服务框架） ---
+file(GLOB_RECURSE LWSERVERBASE_ALL ${THIRDPARTY_DIR}/lwserverbase/*.cpp)
+list(FILTER LWSERVERBASE_ALL EXCLUDE REGEX ".*/tests/.*")
+list(FILTER LWSERVERBASE_ALL EXCLUDE REGEX ".*/examples/.*")
+list(FILTER LWSERVERBASE_ALL EXCLUDE REGEX ".*/ConfigManager\\.cpp$")
+list(FILTER LWSERVERBASE_ALL EXCLUDE REGEX ".*/ProcessController\\.cpp$")
+list(FILTER LWSERVERBASE_ALL EXCLUDE REGEX ".*/vsoa_node/.*")
+add_library(lwserverbase STATIC ${LWSERVERBASE_ALL})
+target_include_directories(lwserverbase PUBLIC ${THIRDPARTY_DIR}/lwserverbase ${THIRDPARTY_DIR})
+target_link_libraries(lwserverbase PUBLIC lwcomm lwlog lwmsgq lwevent)
+
 # 列出源文件
 set(SOURCES
     main.cpp
@@ -44,25 +122,23 @@ set(SOURCES
     LogQueryTab.cpp
     ModbusCluster.cpp
     WebSocketClient.cpp
-    DiagnosticClient.cpp
-    tinyvsoa/tinyvsoa.cpp
-    
+    # DiagnosticClient.cpp — 临时禁用: tinyvsoa 依赖缺失（待 Task 14 清理）
+
     # 新框架文件
     src/framework/EventBus.cpp
     src/framework/ConnectionPool.cpp
     src/framework/AppState.cpp
-    
+
     # 新模型文件
     src/model/FtpManager.cpp
-    
+
     # 新Presenter文件
-    src/presenter/FtpPresenter.cpp
-    src/presenter/ModbusPresenter.cpp
+    # src/presenter/FtpPresenter.cpp — 临时禁用: QPointer<FtpManager> 类型错误（待重构）
+    # src/presenter/ModbusPresenter.cpp — 临时禁用: 桩代码依赖未就绪（待 Task 13）
 )
 
 include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/include 
-    ${CMAKE_CURRENT_SOURCE_DIR}/tinyvsoa
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
