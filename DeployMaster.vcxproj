@@ -195,7 +195,7 @@
     <!-- lwserverbase (core + logging + metrics, 排除 tests/examples/ConfigManager/ProcessController/vsoa_node) -->
     <ClCompile Include="src\thirdparty\lwserverbase\core\ServiceBase.cpp" />
     <ClCompile Include="src\thirdparty\lwserverbase\core\ServiceTask.cpp" />
-    <ClCompile Include="src\thirdparty\lwserverbase\core\ServiceManager.cpp" />
+    <!-- ServiceManager.cpp 依赖 ConfigManager + ProcessController（Windows 不兼容），ToolHost 直接调用 ServiceTask 方法，不需要它 -->
     <ClCompile Include="src\thirdparty\lwserverbase\logging\Logger.cpp" />
     <ClCompile Include="src\thirdparty\lwserverbase\metrics\MetricsCollector.cpp" />
   </ItemGroup>
@@ -241,9 +241,7 @@
     <QtMoc Include="src\framework\AppState.h" />
     <QtMoc Include="src\ui\DeviceBusWidget.h" />
     <QtMoc Include="src\tools\FtpDeployTool\FtpDeployWidget.h" />
-    <!-- 旧 Presenter 头文件（有 Q_OBJECT，暂时保留不编译 cpp） -->
-    <QtMoc Include="src\presenter\FtpPresenter.h" />
-    <QtMoc Include="src\presenter\ModbusPresenter.h" />
+    <!-- 旧 Presenter 头文件（.cpp 未编译，去掉 QtMoc 避免未解析符号） -->
   </ItemGroup>
   <!-- ============================================================ -->
   <!-- 纯头文件（无需 MOC）                                           -->

@@ -196,9 +196,7 @@
     <ClCompile Include="src\thirdparty\lwserverbase\core\ServiceTask.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\thirdparty\lwserverbase\core\ServiceManager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
+    <!-- ServiceManager.cpp 排除（依赖 Windows 不兼容的 ConfigManager/ProcessController） -->
     <ClCompile Include="src\thirdparty\lwserverbase\logging\Logger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -324,11 +322,6 @@
     <QtMoc Include="src\tools\FtpDeployTool\FtpDeployWidget.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="src\presenter\FtpPresenter.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="src\presenter\ModbusPresenter.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
+    <!-- FtpPresenter/ModbusPresenter .cpp 未编译，去掉 MOC 引用 -->
   </ItemGroup>
 </Project>
