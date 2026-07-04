@@ -64,11 +64,12 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>./include;./tinyvsoa;./src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>./include;./src;./src/thirdparty;./src/thirdparty/lwcomm;./src/thirdparty/lwevent;./src/thirdparty/lwmsgq;./src/thirdparty/lwlog;./src/thirdparty/lwlog/src;./src/thirdparty/lwcommunicate;./src/thirdparty/lwserverbase;./src/thirdparty/lwserverbase/core;./src/thirdparty/lwserverbase/config;./src/thirdparty/lwserverbase/logging;./src/thirdparty/lwserverbase/metrics;./src/thirdparty/lwserverbase/include;./src/thirdparty/tinyxml2;./src/thirdparty/nanopb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;lwcomm_EXPORTS;LWEVENT_EXPORTS;lwlog_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>./lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);libcurl_imp.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);libcurl_imp.lib;ws2_32.lib;iphlpapi.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
@@ -81,6 +82,16 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>./include;./src;./src/thirdparty;./src/thirdparty/lwcomm;./src/thirdparty/lwevent;./src/thirdparty/lwmsgq;./src/thirdparty/lwlog;./src/thirdparty/lwlog/src;./src/thirdparty/lwcommunicate;./src/thirdparty/lwserverbase;./src/thirdparty/lwserverbase/core;./src/thirdparty/lwserverbase/config;./src/thirdparty/lwserverbase/logging;./src/thirdparty/lwserverbase/metrics;./src/thirdparty/lwserverbase/include;./src/thirdparty/tinyxml2;./src/thirdparty/nanopb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NOMINMAX;lwcomm_EXPORTS;LWEVENT_EXPORTS;lwlog_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>./lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);libcurl_imp.lib;ws2_32.lib;iphlpapi.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="Configuration">
@@ -99,53 +110,164 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
+  <!-- ============================================================ -->
+  <!-- 旧架构源文件（根目录）                                          -->
+  <!-- ============================================================ -->
   <ItemGroup>
-    <ClCompile Include="FtpRemoteItem.h" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="DeployMaster.cpp" />
+    <ClCompile Include="DropListWidget.cpp" />
+    <ClCompile Include="TelnetClient.cpp" />
+    <ClCompile Include="TelnetDeploy.cpp" />
     <ClCompile Include="LogQueryTab.cpp" />
     <ClCompile Include="ModbusCluster.cpp" />
     <ClCompile Include="OpcUaClient.cpp" />
-    <ClCompile Include="TelnetClient.cpp" />
-    <ClCompile Include="TelnetDeploy.cpp" />
-    <QtRcc Include="DeployMaster.qrc" />
-    <QtUic Include="BatchDeploy.ui" />
-    <QtUic Include="DeployMaster.ui" />
-    <ClCompile Include="DeployMaster.cpp" />
-    <ClCompile Include="DropListWidget.cpp" />
-    <ClCompile Include="FileDeploy.cpp" />
-    <ClCompile Include="main.cpp" />
-    <QtUic Include="tab_diagnostic.ui" />
-    <QtUic Include="tab_modbus_cluster_test.ui" />
-    <QtUic Include="tab_logquery.ui" />
-    <QtUic Include="tab_telnet.ui" />
-    <QtUic Include="tab_websocket.ui" />
     <ClCompile Include="WebSocketClient.cpp" />
-    <ClCompile Include="src\framework\EventBus.cpp" />
-    <ClCompile Include="src\framework\ConnectionPool.cpp" />
-    <ClCompile Include="src\framework\AppState.cpp" />
-    <ClCompile Include="src\model\FtpManager.cpp" />
-    <ClCompile Include="src\presenter\FtpPresenter.cpp" />
-    <ClCompile Include="src\presenter\ModbusPresenter.cpp" />
   </ItemGroup>
+  <!-- ============================================================ -->
+  <!-- 新架构源文件（src/）                                            -->
+  <!-- ============================================================ -->
   <ItemGroup>
-    <QtMoc Include="OpcUaClient.h" />
-    <ClInclude Include="ui_tab_opcua_client.h" />
-    <QtMoc Include="TelnetDeploy.h" />
-    <QtMoc Include="TelnetClient.h" />
+    <!-- 日志桥接 -->
+    <ClCompile Include="src\logging\LogBridge.cpp" />
+    <!-- 协议适配器 -->
+    <ClCompile Include="src\adapter\FtpAdapter.cpp" />
+    <ClCompile Include="src\adapter\TelnetAdapter.cpp" />
+    <ClCompile Include="src\adapter\ProtocolRegistry.cpp" />
+    <!-- 框架层 -->
+    <ClCompile Include="src\framework\AppState.cpp" />
+    <ClCompile Include="src\framework\ToolWidget.cpp" />
+    <ClCompile Include="src\framework\ManifestParser.cpp" />
+    <ClCompile Include="src\framework\ToolRegistry.cpp" />
+    <ClCompile Include="src\framework\ToolHost.cpp" />
+    <!-- 模型层 -->
+    <ClCompile Include="src\model\FtpManager.cpp" />
+    <!-- UI 组件 -->
+    <ClCompile Include="src\ui\DeviceBusWidget.cpp" />
+    <!-- Tool 实现 -->
+    <ClCompile Include="src\tools\FtpDeployTool\FtpDeployBackend.cpp" />
+    <ClCompile Include="src\tools\FtpDeployTool\FtpDeployWidget.cpp" />
+  </ItemGroup>
+  <!-- ============================================================ -->
+  <!-- Thirdparty 源文件                                              -->
+  <!-- ============================================================ -->
+  <ItemGroup>
+    <!-- lwcomm -->
+    <ClCompile Include="src\thirdparty\lwcomm\src\comm.cpp" />
+    <ClCompile Include="src\thirdparty\lwcomm\src\comm_impl.cpp" />
+    <ClCompile Include="src\thirdparty\lwcomm\src\file_helper.cpp" />
+    <ClCompile Include="src\thirdparty\lwcomm\src\file_system.cpp" />
+    <ClCompile Include="src\thirdparty\lwcomm\src\lwbase64.cpp" />
+    <ClCompile Include="src\thirdparty\lwcomm\src\string_helper.cpp" />
+    <ClCompile Include="src\thirdparty\lwcomm\src\system_info.cpp" />
+    <ClCompile Include="src\thirdparty\lwcomm\src\time_helper.cpp" />
+    <!-- lwevent -->
+    <ClCompile Include="src\thirdparty\lwevent\lwevent.c">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">LWEVENT_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <!-- lwmsgq -->
+    <ClCompile Include="src\thirdparty\lwmsgq\lwmsgq.c" />
+    <ClCompile Include="src\thirdparty\lwmsgq\list.c" />
+    <!-- tinyxml2 -->
+    <ClCompile Include="src\thirdparty\tinyxml2\tinyxml2.cpp" />
+    <!-- lwlog -->
+    <ClCompile Include="src\thirdparty\lwlog\src\lwlog.cpp" />
+    <ClCompile Include="src\thirdparty\lwlog\src\lwlog_c.cpp" />
+    <ClCompile Include="src\thirdparty\lwlog\src\logger_impl.cpp" />
+    <ClCompile Include="src\thirdparty\lwlog\src\console_appender.cpp" />
+    <ClCompile Include="src\thirdparty\lwlog\src\file_appender.cpp" />
+    <ClCompile Include="src\thirdparty\lwlog\src\pattern_formatter.cpp" />
+    <ClCompile Include="src\thirdparty\lwlog\src\log_config_reader.cpp" />
+    <!-- lwcommunicate -->
+    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_base.cpp" />
+    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_device.cpp" />
+    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_manager.cpp" />
+    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_pool.cpp" />
+    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_utils.cpp" />
+    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_tcp_client.cpp" />
+    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_tcp_server.cpp" />
+    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_udp.cpp" />
+    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_serial.cpp" />
+    <!-- nanopb -->
+    <ClCompile Include="src\thirdparty\nanopb\pb_encode.c" />
+    <ClCompile Include="src\thirdparty\nanopb\pb_decode.c" />
+    <ClCompile Include="src\thirdparty\nanopb\pb_common.c" />
+    <!-- lwserverbase (core + logging + metrics, 排除 tests/examples/ConfigManager/ProcessController/vsoa_node) -->
+    <ClCompile Include="src\thirdparty\lwserverbase\core\ServiceBase.cpp" />
+    <ClCompile Include="src\thirdparty\lwserverbase\core\ServiceTask.cpp" />
+    <ClCompile Include="src\thirdparty\lwserverbase\core\ServiceManager.cpp" />
+    <ClCompile Include="src\thirdparty\lwserverbase\logging\Logger.cpp" />
+    <ClCompile Include="src\thirdparty\lwserverbase\metrics\MetricsCollector.cpp" />
+  </ItemGroup>
+  <!-- ============================================================ -->
+  <!-- 数据结构头文件（ClCompile 让它们参与编译，确保无孤立引用）        -->
+  <!-- ============================================================ -->
+  <ItemGroup>
+    <ClInclude Include="FtpRemoteItem.h" />
+  </ItemGroup>
+  <!-- ============================================================ -->
+  <!-- Qt MOC + UI + RCC 文件                                         -->
+  <!-- ============================================================ -->
+  <ItemGroup>
+    <QtRcc Include="DeployMaster.qrc" />
+    <QtUic Include="DeployMaster.ui" />
+    <QtUic Include="BatchDeploy.ui" />
+    <QtUic Include="tab_telnet.ui" />
+    <QtUic Include="tab_logquery.ui" />
+    <QtUic Include="tab_modbus_cluster_test.ui" />
+    <QtUic Include="tab_opcua_client.ui" />
+    <QtUic Include="tab_websocket.ui" />
+    <QtUic Include="tab_diagnostic.ui" />
+  </ItemGroup>
+  <!-- ============================================================ -->
+  <!-- 旧架构头文件（MOC 处理 Q_OBJECT 类）                            -->
+  <!-- ============================================================ -->
+  <ItemGroup>
     <QtMoc Include="DeployMaster.h" />
     <QtMoc Include="DropListWidget.h" />
-    <ClInclude Include="FileDeploy.h" />
+    <QtMoc Include="TelnetClient.h" />
+    <QtMoc Include="TelnetDeploy.h" />
     <QtMoc Include="LogQueryTab.h" />
     <QtMoc Include="ModbusCluster.h" />
+    <QtMoc Include="OpcUaClient.h" />
     <QtMoc Include="WebSocketClient.h" />
-    <ClInclude Include="resource.h" />
-    <QtMoc Include="src\framework\EventBus.h" />
-    <QtMoc Include="src\framework\ConnectionPool.h" />
+  </ItemGroup>
+  <!-- ============================================================ -->
+  <!-- 新架构头文件（MOC 处理 Q_OBJECT 类）                            -->
+  <!-- ============================================================ -->
+  <ItemGroup>
+    <QtMoc Include="src\framework\ToolWidget.h" />
+    <QtMoc Include="src\framework\ToolHost.h" />
     <QtMoc Include="src\framework\AppState.h" />
-    <ClInclude Include="src\utils\DeployEvent.h" />
-    <ClInclude Include="src\model\FtpManager.h" />
+    <QtMoc Include="src\ui\DeviceBusWidget.h" />
+    <QtMoc Include="src\tools\FtpDeployTool\FtpDeployWidget.h" />
+    <!-- 旧 Presenter 头文件（有 Q_OBJECT，暂时保留不编译 cpp） -->
     <QtMoc Include="src\presenter\FtpPresenter.h" />
     <QtMoc Include="src\presenter\ModbusPresenter.h" />
   </ItemGroup>
+  <!-- ============================================================ -->
+  <!-- 纯头文件（无需 MOC）                                           -->
+  <!-- ============================================================ -->
+  <ItemGroup>
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="ui_tab_opcua_client.h" />
+    <ClInclude Include="src\utils\DeployEvent.h" />
+    <ClInclude Include="src\framework\DeviceInfo.h" />
+    <ClInclude Include="src\framework\ToolBackend.h" />
+    <ClInclude Include="src\framework\ManifestParser.h" />
+    <ClInclude Include="src\framework\ToolRegistry.h" />
+    <ClInclude Include="src\model\FtpManager.h" />
+    <ClInclude Include="src\adapter\IProtocolAdapter.h" />
+    <ClInclude Include="src\adapter\ProtocolCapability.h" />
+    <ClInclude Include="src\adapter\FtpAdapter.h" />
+    <ClInclude Include="src\adapter\TelnetAdapter.h" />
+    <ClInclude Include="src\adapter\ProtocolRegistry.h" />
+    <ClInclude Include="src\logging\LogBridge.h" />
+    <ClInclude Include="src\tools\FtpDeployTool\FtpDeployBackend.h" />
+  </ItemGroup>
+  <!-- ============================================================ -->
+  <!-- Windows 资源                                                   -->
+  <!-- ============================================================ -->
   <ItemGroup>
     <ResourceCompile Include="DeployMaster.rc" />
   </ItemGroup>
