@@ -8,11 +8,11 @@
 #include "LogQueryTab.h"
 #include "TelnetDeploy.h"
 #include "ModbusCluster.h"
-#include "src/utils/DeployEvent.h"
-#include "src/framework/EventBus.h"
 #include "src/framework/AppState.h"
 #include "src/model/FtpManager.h"
 
+class ToolHost;
+class DeviceBusWidget;
 class OpcUaClientTab; // forward declaration
 class WebSocketClient; // forward declaration
 class DiagnosticClient; // forward declaration
@@ -52,11 +52,12 @@ private:
     void addFolderToList(const QString& folderPath); // 添加文件夹到列表的函数    
     QStringList getTargetIPs();
 
+public:
+    ToolHost* toolHost() const { return m_toolHost; }
+    DeviceBusWidget* deviceBusWidget() const { return m_deviceBusWidget; }
+
 public slots:
     void appendFtpLog(const QString& log);
-    void onTaskProgress(const DeployEvent& event);
-    void onTaskFinished(const DeployEvent& event);
-    void onLogMessage(const DeployEvent& event);
 
 private slots:
     void onAddFilesClicked();
@@ -91,6 +92,8 @@ private:
 
 private:
     Ui::DeployMaster ui;
+    ToolHost* m_toolHost = nullptr;
+    DeviceBusWidget* m_deviceBusWidget = nullptr;
     LogQueryTab* m_logQueryTab = nullptr;
     TelnetDeploy* m_telnetDeployTab = nullptr;
     ModbusCluster* m_modbusCluster = nullptr;
