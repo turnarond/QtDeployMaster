@@ -13,7 +13,6 @@
 
 #include "OpcUaClient.h" // add header
 #include "WebSocketClient.h" // add header
-//#include "DiagnosticClient.h" // add header
 
 #include "src/framework/ToolHost.h"
 #include "src/ui/DeviceBusWidget.h"
@@ -103,14 +102,6 @@ void DeployMaster::setupWebSocketClientTab()
     m_webSocketClient = new WebSocketClient(this);
     ui.tabWidget->addTab(m_webSocketClient, tr("WebSocket"));
 }
-
-// new: setup for diagnostic
-void DeployMaster::setupDiagnosticClientTab()
-{
-    //m_diagnosticClient = new DiagnosticClient(this);
-    //ui.tabWidget->addTab(m_diagnosticClient, tr("诊断工具"));
-}
-
 
 void DeployMaster::onAddFilesClicked()
 {
