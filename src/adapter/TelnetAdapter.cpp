@@ -22,6 +22,7 @@ struct TelnetAdapter::Impl {
     // 请求-响应模式的响应缓冲区（由读取线程填充，request() 超时后取用）
     std::string m_responseBuffer;
     std::mutex  m_responseMutex;
+    std::mutex  m_requestMutex;   // 序列化 request() 调用，防止并发覆盖响应缓冲区
 
     // 预设超时（毫秒）
     static constexpr int kReadTimeoutMs = 200;
@@ -186,6 +187,9 @@ std::future<Response> TelnetAdapter::request(const Request& req) {
     return std::async(std::launch::async, [this, req]() -> Response {
         Response resp;
 
+        // 序列化并发请求，防止共享 m_responseBuffer 数据串扰
+        std::lock_guard<std::mutex> lock(m_impl->m_requestMutex);
+
         if (!m_impl->m_client || !m_impl->m_client->isConnected()) {
             resp.success = false;
             resp.errorMessage = "Telnet 未连接";
@@ -260,7 +264,7 @@ void TelnetAdapter::subscribe(const Request& req, StreamCallback onData) {
         cmd += "\r\n";
     }
 
-    if (!cmd.empty() || cmd != "\r\n") {
+    if (!cmd.empty() && cmd != "\r\n") {
         LWConnError sendErr = m_impl->m_client->send(cmd.c_str(), cmd.size(),
                                                         Impl::kSendTimeoutMs);
         if (sendErr != LWConnError::SUCCESS) {
