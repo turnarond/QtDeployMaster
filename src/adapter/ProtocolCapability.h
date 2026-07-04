@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <cstdint>
+#include "framework/DeviceInfo.h"
 
 // 协议能力声明 — 框架据此判断 Tool 需要的协议是否可用
 struct ProtocolCapability {
@@ -9,20 +10,6 @@ struct ProtocolCapability {
     bool broadcast        = false;  // 支持广播/多播（UDP）
     bool publishSubscribe = false;  // 支持发布/订阅（MQTT）
     int  maxConnections   = 1;      // 单适配器最大并发连接数
-};
-
-// 设备信息
-struct DeviceInfo {
-    std::string ip;
-    int         port     = 0;
-    std::string protocol;  // "ftp", "telnet", "modbus"...
-    std::string alias;     // 用户自定义别名（可选）
-};
-
-// 认证凭证
-struct AuthInfo {
-    std::string user;
-    std::string password;
 };
 
 // 通用请求
