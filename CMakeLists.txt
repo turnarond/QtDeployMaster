@@ -115,7 +115,6 @@ set(SOURCES
     main.cpp
     DeployMaster.cpp
     DropListWidget.cpp
-    FileDeploy.cpp
     TelnetClient.cpp
     OpcUaClient.cpp
     TelnetDeploy.cpp
@@ -129,14 +128,25 @@ set(SOURCES
 
     # 协议适配器
     src/adapter/FtpAdapter.cpp
+    src/adapter/TelnetAdapter.cpp
+    src/adapter/ProtocolRegistry.cpp
 
     # 新框架文件
-    src/framework/EventBus.cpp
-    src/framework/ConnectionPool.cpp
     src/framework/AppState.cpp
+    src/framework/ManifestParser.cpp
+    src/framework/ToolRegistry.cpp
+    src/framework/ToolHost.cpp
+    src/framework/ToolWidget.cpp
 
     # 新模型文件
     src/model/FtpManager.cpp
+
+    # UI 组件
+    src/ui/DeviceBusWidget.cpp
+
+    # Tool 实现
+    src/tools/FtpDeployTool/FtpDeployBackend.cpp
+    src/tools/FtpDeployTool/FtpDeployWidget.cpp
 
     # 新Presenter文件
     # src/presenter/FtpPresenter.cpp — 临时禁用: QPointer<FtpManager> 类型错误（待重构）
@@ -162,6 +172,9 @@ target_link_libraries(DeployMaster PRIVATE
     Qt6::WebSockets
     lwlog
     lwcomm
+    lwcommunicate
+    lwserverbase
+    tinyxml2
     ${LIBCURL_IMPL_LIB}
 )
 
