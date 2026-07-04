@@ -19,6 +19,7 @@
 #include <string>
 #include <functional>
 #include <atomic>
+#include <QFuture>
 
 class FtpDeployBackend : public ToolBackend {
 public:
@@ -59,6 +60,7 @@ private:
     bool m_clearBeforeDeploy = false;
     bool m_rebootAfterDeploy = false;
     std::atomic<bool> m_cancelled{false};
+    QFuture<void> m_uploadFuture;  // 追踪异步上传任务，析构前等待完成
 
     std::function<void(int)> m_progressCb;
     std::function<void(const std::string&)> m_logCb;

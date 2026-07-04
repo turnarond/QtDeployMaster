@@ -8,6 +8,15 @@
 #include <vector>
 #include <future>
 
+// libcurl 全局初始化 RAII 守卫 — 整个进程生命周期仅构造/析构一次
+namespace {
+    struct CurlGlobalGuard {
+        CurlGlobalGuard()  { curl_global_init(CURL_GLOBAL_DEFAULT); }
+        ~CurlGlobalGuard() { curl_global_cleanup(); }
+    };
+    static CurlGlobalGuard s_curlGuard;
+} // anonymous namespace
+
 // ============================================================
 // Pimpl 实现体 — 封装所有 libcurl 操作细节
 // ============================================================
@@ -104,13 +113,10 @@ struct FtpAdapter::Impl {
 // 构造 / 析构
 // ============================================================
 
-FtpAdapter::FtpAdapter() : m_impl(std::make_unique<Impl>()) {
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-}
+FtpAdapter::FtpAdapter() : m_impl(std::make_unique<Impl>()) {}
 
 FtpAdapter::~FtpAdapter() {
     disconnect();
-    curl_global_cleanup();
 }
 
 // ============================================================

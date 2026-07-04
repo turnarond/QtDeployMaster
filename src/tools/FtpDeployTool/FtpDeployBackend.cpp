@@ -27,6 +27,10 @@ FtpDeployBackend::FtpDeployBackend()
 FtpDeployBackend::~FtpDeployBackend()
 {
     cancelUpload();
+    // 等待异步上传任务完成，防止 UAF（Use-After-Free）
+    if (m_uploadFuture.isRunning()) {
+        m_uploadFuture.waitForFinished();
+    }
 }
 
 int FtpDeployBackend::svc()
@@ -66,7 +70,12 @@ void FtpDeployBackend::startUpload(const std::vector<std::string>& localFiles,
     m_clearBeforeDeploy = clearBeforeDeploy;
     m_rebootAfterDeploy = rebootAfterDeploy;
 
-    QtConcurrent::run([this, localFiles]() {
+    // 如果已有上传任务在运行，先等待完成
+    if (m_uploadFuture.isRunning()) {
+        m_uploadFuture.waitForFinished();
+    }
+
+    m_uploadFuture = QtConcurrent::run([this, localFiles]() {
         std::vector<std::string> successes, failures;
 
         if (m_devices.empty()) {
