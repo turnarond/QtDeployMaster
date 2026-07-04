@@ -15,7 +15,6 @@ class ToolHost;
 class DeviceBusWidget;
 class OpcUaClientTab; // forward declaration
 class WebSocketClient; // forward declaration
-class DiagnosticClient; // forward declaration
 
 class DeployMaster : public QMainWindow
 {
@@ -78,7 +77,6 @@ private:
     void setupModbusClusterTab();
     void setupOpcUaClientTab(); // new
     void setupWebSocketClientTab(); // new
-    void setupDiagnosticClientTab(); // new
     void setupRemotePreview(); // 初始化远端预览功能
     
     // 远端预览相关方法
@@ -95,6 +93,5 @@ private:
     ModbusCluster* m_modbusCluster = nullptr;
     OpcUaClientTab* m_opcUaTab = nullptr; // new
     WebSocketClient* m_webSocketClient = nullptr; // new
-    //DiagnosticClient* m_diagnosticClient = nullptr; // new
 };
 
