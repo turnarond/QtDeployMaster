@@ -49,8 +49,9 @@ static QIcon createOfflineIcon()
     return QIcon(pix);
 }
 
-static QIcon s_onlineIcon  = createOnlineIcon();
-static QIcon s_offlineIcon = createOfflineIcon();
+// 延迟初始化：首次调用时 QApplication 已就绪，避免静态初始化期创建 QPixmap 崩溃
+static QIcon onlineIcon()  { static QIcon icon = createOnlineIcon();  return icon; }
+static QIcon offlineIcon() { static QIcon icon = createOfflineIcon(); return icon; }
 
 DeviceBusWidget::DeviceBusWidget(QWidget* parent) : QWidget(parent)
 {
@@ -148,7 +149,7 @@ void DeviceBusWidget::addDevice(const DeviceInfo& device)
     item->setData(Qt::UserRole,     ipStr);
     item->setData(Qt::UserRole + 1, QString::fromStdString(device.protocol));
     item->setData(Qt::UserRole + 2, device.port);
-    item->setIcon(s_offlineIcon);  // 默认离线
+    item->setIcon(offlineIcon());  // 默认离线
     item->setToolTip(QString::fromStdString(
         device.ip + ":" + std::to_string(device.port) + " [" + device.protocol + "]"));
     m_deviceList->addItem(item);
@@ -196,7 +197,7 @@ void DeviceBusWidget::setOnlineStatus(const QString& ip, bool online)
     for (int i = 0; i < m_deviceList->count(); ++i) {
         auto* item = m_deviceList->item(i);
         if (item->data(Qt::UserRole).toString() == ip) {
-            item->setIcon(online ? s_onlineIcon : s_offlineIcon);
+            item->setIcon(online ? onlineIcon() : offlineIcon());
             // 存储在线状态供 QSS 使用
             item->setData(Qt::UserRole + 3, online);
             return;
