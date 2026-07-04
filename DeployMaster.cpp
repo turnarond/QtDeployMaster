@@ -9,15 +9,32 @@
 #include <QStandardItemModel>
 #include <QStandardItem>
 #include <QInputDialog>
+#include <QVBoxLayout>
 
 #include "OpcUaClient.h" // add header
 #include "WebSocketClient.h" // add header
 //#include "DiagnosticClient.h" // add header
 
+#include "src/framework/ToolHost.h"
+#include "src/ui/DeviceBusWidget.h"
+
 DeployMaster::DeployMaster(QWidget* parent)
     : QMainWindow(parent)
 {
     ui.setupUi(this);
+
+    // 创建设备总线组件（顶部水平胶囊形设备列表）
+    m_deviceBusWidget = new DeviceBusWidget(this);
+    // 将设备总线插入到主布局顶部（全局配置栏上方）
+    if (ui.centralwidget) {
+        QVBoxLayout* centralLayout = qobject_cast<QVBoxLayout*>(ui.centralwidget->layout());
+        if (centralLayout) {
+            centralLayout->insertWidget(0, m_deviceBusWidget);
+        }
+    }
+
+    // 创建 ToolHost 桥接层（管理 Backend ↔ Widget 配对和生命周期）
+    m_toolHost = new ToolHost(this);
 
     setupLogQueryTab();
     setupTelnetDeployTab();
@@ -38,11 +55,6 @@ DeployMaster::DeployMaster(QWidget* parent)
     connect(ui.list_uploadedItems, &DropListWidget::filesDropped, this, &DeployMaster::onFilesDropped);
     connect(ui.btn_deploy, &QPushButton::clicked, this, &DeployMaster::onDeployClicked);
     connect(ui.btn_clearLog, &QPushButton::clicked, this, &DeployMaster::onClearLogClicked);
-
-    // 订阅事件总线
-    EventBus::instance()->subscribe(DeployEvent::TaskProgress, this, SLOT(onTaskProgress(const DeployEvent&)));
-    EventBus::instance()->subscribe(DeployEvent::TaskFinished, this, SLOT(onTaskFinished(const DeployEvent&)));
-    EventBus::instance()->subscribe(DeployEvent::LogMessage, this, SLOT(onLogMessage(const DeployEvent&)));
 
     // 监听应用状态变化
     connect(AppState::instance(), &AppState::isBusyChanged, this, [this](bool busy) {
@@ -168,43 +180,8 @@ void DeployMaster::onDeployClicked()
         items << item.fullPath;
     }
 
-    // 通过事件总线发布上传请求（携带所有配置选项）
-    QVariantMap data;
-    data["items"] = items;
-    data["targets"] = ips;
-    data["user"] = user;
-    data["pass"] = pass;
-    data["remotePath"] = remotePath;
-    data["shouldReboot"] = shouldReboot;
-    data["shouldClearRemote"] = shouldClearRemote;
-
-    EventBus::instance()->postEvent(DeployEvent(DeployEvent::UploadRequest, data));
-}
-
-void DeployMaster::onTaskProgress(const DeployEvent& event)
-{
-    int progress = event.data.toInt();
-    // 更新进度条（如果有）
-    appendFtpLog(QString("📊 进度: %1%").arg(progress));
-}
-
-void DeployMaster::onTaskFinished(const DeployEvent& event)
-{
-    QVariantMap result = event.data.toMap();
-    bool success = result["success"].toBool();
-    QStringList successes = result["successes"].toStringList();
-    QStringList failures = result["failures"].toStringList();
-
-    appendFtpLog("🎉 批量部署完成！");
-    appendFtpLog(QString("📊 部署成功: %1 | 部署失败: %2").arg(successes.size()).arg(failures.size()));
-    if (!failures.isEmpty()) {
-        appendFtpLog("❌ 失败列表: " + failures.join(", "));
-    }
-}
-
-void DeployMaster::onLogMessage(const DeployEvent& event)
-{
-    appendFtpLog(event.data.toString());
+    // TODO: 通过 ToolHost + FtpDeployBackend 触发部署（替换旧 EventBus 路径）
+    appendFtpLog("⚠ 部署功能已迁移至「文件部署」Tool，请使用新的 Tool 界面。");
 }
 
 void DeployMaster::onFtpUploadFinished(const QStringList& deploySuccesses,
