@@ -83,6 +83,9 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>copy /Y "$(ProjectDir)lib\libcurl-x64.dll" "$(OutDir)libcurl.dll"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -109,6 +112,9 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
+    <PostBuildEvent>
+      <Command>copy /Y "$(ProjectDir)lib\libcurl-x64.dll" "$(OutDir)libcurl.dll"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <!-- ============================================================ -->
   <!-- 旧架构源文件（根目录）                                          -->
