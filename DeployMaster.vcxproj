@@ -223,7 +223,7 @@
     <QtUic Include="tab_modbus_cluster_test.ui" />
     <QtUic Include="tab_opcua_client.ui" />
     <QtUic Include="tab_websocket.ui" />
-    <QtUic Include="tab_diagnostic.ui" />
+    <!-- tab_diagnostic.ui 已随 DiagnosticClient 删除 -->
   </ItemGroup>
   <!-- ============================================================ -->
   <!-- 旧架构头文件（MOC 处理 Q_OBJECT 类）                            -->

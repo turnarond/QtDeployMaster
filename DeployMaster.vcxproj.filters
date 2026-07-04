@@ -272,9 +272,7 @@
     <QtUic Include="tab_modbus_cluster_test.ui">
       <Filter>Form Files</Filter>
     </QtUic>
-    <QtUic Include="tab_diagnostic.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
+    <!-- tab_diagnostic.ui 已随 DiagnosticClient 删除 -->
     <QtUic Include="tab_websocket.ui">
       <Filter>Form Files</Filter>
     </QtUic>
