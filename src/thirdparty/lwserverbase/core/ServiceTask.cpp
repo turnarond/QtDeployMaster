@@ -22,10 +22,10 @@ ServiceTask::ServiceTask()
 }
 
 ServiceTask::~ServiceTask() {
-    // 确保线程已停止
-    if (running_) {
-        OnStop();
-    }
+    // 始终先发停止信号，再 join 所有线程
+    // 不能仅判断 running_，因为派生类可能已在析构函数中调用 requestShutdown()
+    requestShutdown();
+    wait();
 }
 
 int ServiceTask::OnStart(int argc, char* argv[]) {

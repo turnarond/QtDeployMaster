@@ -190,7 +190,7 @@ void FtpDeployBackend::startUpload(const std::vector<std::string>& localFiles,
 void FtpDeployBackend::cancelUpload()
 {
     m_cancelled = true;
-    requestShutdown();
+    // 不调 requestShutdown()：svc 线程由 ServiceTask::~ServiceTask() 统一停止
     LWLOG_I("FtpDeployBackend: 用户取消上传");
 }
 
