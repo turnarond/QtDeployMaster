@@ -4,8 +4,7 @@
 
 ### 架构重构：可扩展通用设备运维平台
 
-DeployMaster 从单体 Qt 应用升级为 **lwserverbase 服务核 + Qt Widget 壳** 双层插件化架构。
-这是自项目创建以来最大规模的重构。
+DeviceForge（原名 DeployMaster）从单体 Qt 应用升级为 **lwserverbase 服务核 + Qt Widget 壳** 双层插件化架构。2026-07-05 更名为 DeviceForge。
 
 ### 新增
 
