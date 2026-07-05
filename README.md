@@ -1,8 +1,8 @@
-# DeployMaster 2.0 — 通用设备运维平台
+# DeviceForge — 工业设备批量运维平台
 
-DeployMaster 是基于 Qt 6 + C++17 的工业级设备批量运维平台。2.0 版本引入了插件化 Tool 架构和 Protocol Adapter 抽象层，从 SylixOS PLC 专用工具升级为面向通用工业设备（PLC、嵌入式终端、网络设备等）的可扩展运维平台。
+DeviceForge 是基于 Qt 6 + C++17 的工业级设备批量运维平台。2.0 版本引入插件化 Tool 架构和 Protocol Adapter 抽象层，从 SylixOS PLC 专用工具升级为面向通用工业设备（PLC、嵌入式终端、网络设备等）的可扩展运维平台。原名 DeployMaster，2026-07-05 更名为 DeviceForge。
 
-**版本**：2.0.0 | **许可**：内部使用 | **平台**：Windows（Linux 待适配）
+**版本**：2.1.0 | **许可**：内部使用 | **平台**：Windows（Linux 待适配）
 
 ---
 
