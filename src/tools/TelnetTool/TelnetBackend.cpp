@@ -218,7 +218,7 @@ void TelnetBackend::executeCommand(const std::vector<std::string>& ips,
 void TelnetBackend::cancel()
 {
     m_cancelled = true;
-    requestShutdown();
+    // 不调 requestShutdown()：svc 线程由 ServiceTask::~ServiceTask() 统一停止
     LWLOG_I("TelnetBackend: 用户取消执行");
 }
 
