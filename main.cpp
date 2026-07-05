@@ -53,8 +53,8 @@ int main(int argc, char *argv[])
         "com.deploymaster.websocket.comm", "WebSocket 通信", "communication",
         "websocket_comm", "2.0.0", "WebSocket Server/Client 通信，支持订阅/发布主题");
 
-    // 注册 Tool 工厂到 ToolHost（创建 Backend + Widget 实例）
-    // ToolHost 由 DeployMaster 内部创建和管理
+    // 注册 Tool 工厂到 ToolHost（预留：当前 Tool 通过 DeployMaster 直接创建，
+    // 待 ToolHost 支持多 Tool 并发后切换为 createTool() 方式）
     window.toolHost()->registerBuiltinFactory("com.deploymaster.ftp.deploy",
         []() -> std::shared_ptr<ToolBackend> {
             return std::make_shared<FtpDeployBackend>();
