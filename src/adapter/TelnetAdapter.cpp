@@ -129,8 +129,10 @@ bool TelnetAdapter::connect(const DeviceInfo& device, const AuthInfo& auth) {
     LWConnError sendErr = m_impl->m_client->send(loginCmd.c_str(),
                                                    loginCmd.size(), Impl::kSendTimeoutMs);
     if (sendErr != LWConnError::SUCCESS) {
-        m_impl->m_lastError = "Telnet 发送用户名失败";
-        // 不立即断开，某些 Telnet 服务器可能不需要用户名
+        m_impl->m_lastError = "Telnet 发送用户名失败，连接已断开";
+        m_impl->m_client->stop();
+        m_impl->m_client.reset();
+        return false;
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(Impl::kAuthDelayMs));
@@ -138,8 +140,10 @@ bool TelnetAdapter::connect(const DeviceInfo& device, const AuthInfo& auth) {
     std::string passCmd = auth.password + "\r\n";
     sendErr = m_impl->m_client->send(passCmd.c_str(), passCmd.size(), Impl::kSendTimeoutMs);
     if (sendErr != LWConnError::SUCCESS) {
-        m_impl->m_lastError = "Telnet 发送密码失败";
-        // 同上，允许继续
+        m_impl->m_lastError = "Telnet 发送密码失败，连接已断开";
+        m_impl->m_client->stop();
+        m_impl->m_client.reset();
+        return false;
     }
 
     // 再等待服务端处理认证

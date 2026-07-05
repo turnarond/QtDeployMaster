@@ -102,11 +102,17 @@ size_t writeData(void* ptr, size_t size, size_t nmemb, QFile* stream) {
 FtpManager::FtpManager(const QString& host, quint16 port) 
     : m_host(host), m_port(port) {}
 
-FtpManager::~FtpManager() {}
+FtpManager::~FtpManager() { clearCredentials(); }
 
 void FtpManager::setCredentials(const QString& user, const QString& pass) {
     m_user = user;
     m_pass = pass;
+}
+
+void FtpManager::clearCredentials() {
+    if (!m_pass.isEmpty()) { memset(m_pass.data(), 0, m_pass.size() * sizeof(QChar)); }
+    if (!m_user.isEmpty()) { memset(m_user.data(), 0, m_user.size() * sizeof(QChar)); }
+    m_pass.clear(); m_user.clear();
 }
 
 void FtpManager::setHost(const QString& host, quint16 port) {
@@ -165,6 +171,7 @@ bool FtpManager::uploadToTarget(const QString& target, const QStringList& items,
     std::string userPass = (user + ":" + pass).toStdString();
     curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
     curl_easy_setopt(curl, CURLOPT_USERPWD, userPass.c_str());
+    curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "ftp,ftps");
 
     bool allSuccess = true;
 
@@ -319,6 +326,7 @@ void FtpManager::uploadFile(const QString& localPath, const QString& remoteDirec
     curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
     curl_easy_setopt(curl, CURLOPT_USERPWD, (m_user + ":" + m_pass).toStdString().c_str());
+    curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "ftp,ftps");
 
     CURLcode res = curl_easy_perform(curl);
     file.close();
@@ -397,6 +405,7 @@ bool FtpManager::deleteFtpFile(const QString& parentDir, const QString& filename
     // 设置删除文件选项
     curl_easy_setopt(curl, CURLOPT_URL, urlBytes.constData());
     curl_easy_setopt(curl, CURLOPT_USERPWD, (m_user + ":" + m_pass).toStdString().c_str());
+    curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "ftp,ftps");
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     
     // 构建删除命令
@@ -435,6 +444,7 @@ bool FtpManager::deleteFtpDirectory(const QString& parentDir, const QString& dir
     // 设置删除目录选项
     curl_easy_setopt(curl, CURLOPT_URL, urlBytes.constData());
     curl_easy_setopt(curl, CURLOPT_USERPWD, (m_user + ":" + m_pass).toStdString().c_str());
+    curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "ftp,ftps");
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     
     // 构建删除命令
@@ -483,6 +493,7 @@ QList<FtpFileInfo> FtpManager::listFtpDirectoryDetailed(const QString& remoteDir
     // 设置 FTP LIST 选项
     curl_easy_setopt(curl, CURLOPT_URL, urlBytes.constData());
     curl_easy_setopt(curl, CURLOPT_USERPWD, (m_user + ":" + m_pass).toStdString().c_str());
+    curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "ftp,ftps");
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, listWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
     curl_easy_setopt(curl, CURLOPT_DIRLISTONLY, 0L);  // 获取详细列表
@@ -547,6 +558,7 @@ void FtpManager::downloadFile(const QString& remotePath, const QString& localPat
     // 设置下载选项
     curl_easy_setopt(curl, CURLOPT_URL, urlBytes.constData());
     curl_easy_setopt(curl, CURLOPT_USERPWD, (m_user + ":" + m_pass).toStdString().c_str());
+    curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "ftp,ftps");
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeData);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &file);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);

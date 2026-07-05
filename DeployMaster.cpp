@@ -12,8 +12,10 @@
 #include <QVBoxLayout>
 
 #include "OpcUaClient.h" // add header
-#include "src/tools/WebSocketTool/WebSocketWidget.h" // migrated to Tool architecture
+#include "src/tools/WebSocketTool/WebSocketWidget.h"
 #include "src/tools/WebSocketTool/WebSocketBackend.h"
+#include "src/tools/FtpDeployTool/FtpDeployWidget.h"
+#include "src/tools/FtpDeployTool/FtpDeployBackend.h"
 
 #include "src/framework/ToolHost.h"
 #include "src/ui/DeviceBusWidget.h"
@@ -38,11 +40,10 @@ DeployMaster::DeployMaster(QWidget* parent)
     // 创建 ToolHost 桥接层（管理 Backend ↔ Widget 配对和生命周期）
     m_toolHost = new ToolHost(this);
 
+    setupFtpDeployTab();
     setupLogQueryTab();
-    setupTelnetDeployTab();
     setupModbusClusterTab();
     setupOpcUaClientTab();
-    setupWebSocketClientTab();
 
     // 设置 splitter 初始大小比例：工作区占75%，日志区占25%
     ui.splitter_log->setSizes(QList<int>() << 350 << 250);
@@ -51,26 +52,46 @@ DeployMaster::DeployMaster(QWidget* parent)
 
     QApplication::setStyle(QStyleFactory::create("Fusion"));
 
-    connect(ui.btn_addFiles, &QPushButton::clicked, this, &DeployMaster::onAddFilesClicked);
-    connect(ui.btn_addFolders, &QPushButton::clicked, this, &DeployMaster::onAddFolderClicked);
-    connect(ui.btn_clearUploadList, &QPushButton::clicked, this, &DeployMaster::onFileItemCleanClicked);
-    connect(ui.list_uploadedItems, &DropListWidget::filesDropped, this, &DeployMaster::onFilesDropped);
-    connect(ui.btn_deploy, &QPushButton::clicked, this, &DeployMaster::onDeployClicked);
-    connect(ui.btn_clearLog, &QPushButton::clicked, this, &DeployMaster::onClearLogClicked);
+    // 旧"批量部署" Tab 已完全迁移至「文件部署」Tool Tab
+    // 将远端路径输入框移到远端预览面板，隐藏整个旧 Tab
+    m_remotePathEdit = new QLineEdit("/apps/m580cn/bin/", this);
+    ui.verticalLayout_remote->insertWidget(1, m_remotePathEdit);
+    // 清除日志按钮移到底部日志区
+    ui.groupBox_log->layout()->addWidget(ui.btn_clearLog);
+    ui.tabWidget->setTabVisible(ui.tabWidget->indexOf(ui.tab_deploy), false);
 
-    // 监听应用状态变化
-    connect(AppState::instance(), &AppState::isBusyChanged, this, [this](bool busy) {
-        ui.btn_deploy->setEnabled(!busy);
-    });
-    connect(AppState::instance(), &AppState::taskProgressChanged, this, [this](int progress) {
-        // 更新进度条（如果有）
-    });
+    connect(ui.btn_clearLog, &QPushButton::clicked, this, &DeployMaster::onClearLogClicked);
 
     // 初始化远端预览功能
     setupRemotePreview();
 }
 
+void DeployMaster::initToolTabs()
+{
+    setupTelnetDeployTab();
+    setupWebSocketClientTab();
+}
+
 // 在初始化函数中（如 setupUi 后）
+void DeployMaster::setupFtpDeployTab()
+{
+    auto backend = std::make_shared<FtpDeployBackend>();
+    auto* widget = new FtpDeployWidget(this);
+
+    int rc = backend->OnStart(0, nullptr);
+    if (rc != 0) {
+        appendFtpLog("❌ FTP 部署 Tool Backend 启动失败 (rc=" + QString::number(rc) + ")");
+        delete widget;
+        return;
+    }
+
+    widget->setBackend(backend.get());
+    widget->onToolStart();
+    m_ftpBackend = backend;
+    m_ftpDeployTab = widget;
+    ui.tabWidget->addTab(m_ftpDeployTab, tr("文件部署"));
+}
+
 void DeployMaster::setupLogQueryTab()
 {
     m_logQueryTab = new LogQueryTab(this, this);
@@ -81,23 +102,23 @@ void DeployMaster::setupLogQueryTab()
 
 void DeployMaster::setupTelnetDeployTab()
 {
-    // 通过 ToolHost 创建 TelnetTool 实例（Backend + Widget 配对）
-    auto* instance = m_toolHost->createTool("com.deploymaster.telnet.command", this);
-    if (instance && instance->widget) {
-        auto* telnetWidget = qobject_cast<TelnetWidget*>(instance->widget);
-        if (telnetWidget) {
-            // 绑定 Backend 和 DeviceBus
-            auto* backend = dynamic_cast<TelnetBackend*>(instance->backend.get());
-            telnetWidget->setBackend(backend);
-            telnetWidget->setDeviceBusWidget(m_deviceBusWidget);
-            m_telnetDeployTab = telnetWidget;
-            ui.tabWidget->addTab(m_telnetDeployTab, tr("批量命令"));
-        } else {
-            appendFtpLog("❌ TelnetTool Widget 类型转换失败");
-        }
-    } else {
-        appendFtpLog("❌ TelnetTool 创建失败");
+    // 直接创建 TelnetBackend + TelnetWidget，不通过 ToolHost（ToolHost 只支持单个活跃 Tool）
+    auto backend = std::make_shared<TelnetBackend>();
+    auto* widget = new TelnetWidget(this);
+
+    int rc = backend->OnStart(0, nullptr);
+    if (rc != 0) {
+        appendFtpLog("❌ TelnetTool Backend 启动失败 (rc=" + QString::number(rc) + ")");
+        delete widget;
+        return;
     }
+
+    widget->setBackend(backend.get());
+    widget->setDeviceBusWidget(m_deviceBusWidget);
+    widget->onToolStart();
+    m_telnetBackend = backend;
+    m_telnetDeployTab = widget;
+    ui.tabWidget->addTab(m_telnetDeployTab, tr("批量命令"));
 }
 
 void DeployMaster::setupModbusClusterTab()
@@ -114,24 +135,24 @@ void DeployMaster::setupOpcUaClientTab()
     ui.tabWidget->addTab(opcTab, tr("OPC UA 客户端"));
 }
 
-// WebSocket 通信 Tab（通过 ToolHost 创建 Backend + Widget 配对）
+// WebSocket 通信 Tab（直接创建 Backend + Widget，不通过 ToolHost）
 void DeployMaster::setupWebSocketClientTab()
 {
-    auto* instance = m_toolHost->createTool("com.deploymaster.websocket.comm", this);
-    if (instance && instance->widget) {
-        auto* wsWidget = qobject_cast<WebSocketWidget*>(instance->widget);
-        if (wsWidget) {
-            // 绑定 Backend
-            auto* backend = dynamic_cast<WebSocketBackend*>(instance->backend.get());
-            wsWidget->setBackend(backend);
-            m_webSocketWidget = wsWidget;
-            ui.tabWidget->addTab(m_webSocketWidget, tr("WebSocket"));
-        } else {
-            appendFtpLog("❌ WebSocketTool Widget 类型转换失败");
-        }
-    } else {
-        appendFtpLog("❌ WebSocketTool 创建失败");
+    auto backend = std::make_shared<WebSocketBackend>();
+    auto* widget = new WebSocketWidget(this);
+
+    int rc = backend->OnStart(0, nullptr);
+    if (rc != 0) {
+        appendFtpLog("❌ WebSocketTool Backend 启动失败 (rc=" + QString::number(rc) + ")");
+        delete widget;
+        return;
     }
+
+    widget->setBackend(backend.get());
+    widget->onToolStart();
+    m_webSocketBackend = backend;
+    m_webSocketWidget = widget;
+    ui.tabWidget->addTab(m_webSocketWidget, tr("WebSocket"));
 }
 
 void DeployMaster::onAddFilesClicked()
@@ -172,7 +193,7 @@ void DeployMaster::onDeployClicked()
 {
     QString user = m_deviceBusWidget ? m_deviceBusWidget->user() : QString();
     QString pass = m_deviceBusWidget ? m_deviceBusWidget->password() : QString();
-    QString remotePath = ui.txt_remotePath->text().trimmed();
+    QString remotePath = m_remotePathEdit->text().trimmed();
     if (!remotePath.endsWith('/')) remotePath += '/';
 
     if (uploadItems.isEmpty()) {
@@ -358,7 +379,7 @@ void DeployMaster::setupRemotePreview()
     ui.tree_remoteFiles->setModel(remoteFileModel);
     
     // 设置初始路径
-    currentRemotePath = ui.txt_remotePath->text().trimmed();
+    currentRemotePath = m_remotePathEdit->text().trimmed();
     // 确保路径格式正确
     if (!currentRemotePath.endsWith('/')) {
         currentRemotePath += '/';

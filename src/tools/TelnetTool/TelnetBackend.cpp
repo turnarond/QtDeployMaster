@@ -160,12 +160,8 @@ void TelnetBackend::executeCommand(const std::vector<std::string>& ips,
 
                 if (resp.success) {
                     accumulatedOutput += resp.data;
-                    if (m_logCb && !resp.data.empty()) {
-                        // 只输出前 200 字符避免日志刷屏
-                        std::string preview = resp.data.size() > 200
-                            ? resp.data.substr(0, 200) + "..."
-                            : resp.data;
-                        m_logCb(ip + " 返回: " + preview);
+                    if (m_logCb) {
+                        m_logCb(ip + " 命令返回 " + std::to_string(resp.data.size()) + " 字节");
                     }
                 } else {
                     if (m_logCb) m_logCb("命令执行失败: " + cmd

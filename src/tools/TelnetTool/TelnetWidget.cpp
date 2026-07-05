@@ -27,6 +27,8 @@
 #include <QMessageBox>
 #include <QApplication>
 #include <QClipboard>
+#include <QSettings>
+#include <QCheckBox>
 
 TelnetWidget::TelnetWidget(QWidget* parent)
     : ToolWidget(parent)
@@ -226,6 +228,24 @@ void TelnetWidget::onExecuteClicked()
     if (devices.empty()) {
         QMessageBox::warning(this, "未设置目标", "请在设备总线中添加至少一个目标设备。");
         return;
+    }
+
+    // Telnet 明文凭证警告（首次弹出，可勾选不再提示）
+    {
+        QSettings settings("ACOINFO", "DeployMaster");
+        if (!settings.value("Telnet/SecurityWarningDontShowAgain", false).toBool()) {
+            QMessageBox warnBox(this);
+            warnBox.setWindowTitle("安全警告");
+            warnBox.setIcon(QMessageBox::Warning);
+            warnBox.setText("Telnet 协议以明文传输用户名和密码。\n同一网段内可能被窃听。");
+            warnBox.setInformativeText("建议仅在隔离的 OT 网络中使用。是否继续？");
+            auto* cb = new QCheckBox("不再提示", &warnBox);
+            warnBox.setCheckBox(cb);
+            warnBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+            warnBox.setDefaultButton(QMessageBox::No);
+            if (warnBox.exec() != QMessageBox::Yes) return;
+            if (cb->isChecked()) settings.setValue("Telnet/SecurityWarningDontShowAgain", true);
+        }
     }
 
     // 获取命令
