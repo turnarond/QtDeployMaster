@@ -29,10 +29,12 @@ struct FtpAdapter::Impl {
     bool        m_connected = false;
     std::function<void(int)> m_progressCb;
 
+    bool m_useFtps = false;
+
     // --- URL 拼接 ---
     std::string buildUrl(const std::string& path) const {
         std::ostringstream oss;
-        oss << "ftp://" << m_ip << ":" << m_port << "/";
+        oss << (m_useFtps ? "ftps://" : "ftp://") << m_ip << ":" << m_port << "/";
         if (!path.empty() && path[0] == '/') {
             oss << path.substr(1);
         } else {
@@ -99,13 +101,20 @@ struct FtpAdapter::Impl {
         return {};
     }
 
-    // --- 配置 CURL 通用选项（URL + 凭据 + 超时） ---
+    // --- 配置 CURL 通用选项（URL + 凭据 + 超时 + 安全加固） ---
     void setupCommonOpts(CURL* curl, const std::string& url, long timeoutSec = 30) {
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_USERPWD, userPwd().c_str());
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeoutSec);
         curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
         curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
+        curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "ftp,ftps");
+        curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS_STR, "ftp,ftps");
+        if (m_useFtps) {
+            curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_ALL);
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+        }
     }
 };
 
@@ -160,6 +169,9 @@ bool FtpAdapter::connect(const DeviceInfo& device, const AuthInfo& auth) {
 }
 
 void FtpAdapter::disconnect() {
+    volatile char* p = const_cast<volatile char*>(m_impl->m_password.data());
+    for (size_t i = 0; i < m_impl->m_password.size(); ++i) p[i] = '\0';
+    m_impl->m_password.clear();
     m_impl->m_connected = false;
 }
 
@@ -277,6 +289,13 @@ bool FtpAdapter::uploadFile(const std::string& localPath, const std::string& rem
     curl_easy_setopt(curl, CURLOPT_FTP_CREATE_MISSING_DIRS, 1L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
     curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
+    curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "ftp,ftps");
+    curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS_STR, "ftp,ftps");
+    if (m_impl->m_useFtps) {
+        curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_ALL);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+    }
 
     // 进度回调
     if (m_impl->m_progressCb) {
@@ -387,6 +406,13 @@ bool FtpAdapter::downloadFile(const std::string& remotePath, const std::string& 
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
     curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
+    curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "ftp,ftps");
+    curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS_STR, "ftp,ftps");
+    if (m_impl->m_useFtps) {
+        curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_ALL);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+    }
 
     CURLcode res = curl_easy_perform(curl);
     fclose(file);
@@ -567,4 +593,8 @@ bool FtpAdapter::clearRemoteDirectory(const std::string& remotePath) {
 
 void FtpAdapter::setProgressCallback(std::function<void(int)> cb) {
     m_impl->m_progressCb = std::move(cb);
+}
+
+void FtpAdapter::setUseFtps(bool useFtps) {
+    m_impl->m_useFtps = useFtps;
 }

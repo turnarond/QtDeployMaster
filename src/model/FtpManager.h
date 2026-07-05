@@ -22,6 +22,7 @@ public:
     ~FtpManager();
 
     void setCredentials(const QString& user, const QString& pass);
+    void clearCredentials();
     void setHost(const QString& host, quint16 port);
 
     void uploadFiles(const QStringList& items, const QStringList& targets, const QString& remotePath,

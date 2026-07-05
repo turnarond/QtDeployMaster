@@ -63,7 +63,8 @@ void FtpDeployBackend::applyConfig(const lwserverbase::config::ConfigValue& /*co
 void FtpDeployBackend::startUpload(const std::vector<std::string>& localFiles,
                                     const std::string& remotePath,
                                     bool clearBeforeDeploy,
-                                    bool rebootAfterDeploy)
+                                    bool rebootAfterDeploy,
+                                    bool useFtps)
 {
     m_cancelled = false;
     m_remotePath = remotePath;
@@ -75,7 +76,7 @@ void FtpDeployBackend::startUpload(const std::vector<std::string>& localFiles,
         m_uploadFuture.waitForFinished();
     }
 
-    m_uploadFuture = QtConcurrent::run([this, localFiles]() {
+    m_uploadFuture = QtConcurrent::run([this, localFiles, useFtps]() {
         std::vector<std::string> successes, failures;
 
         if (m_devices.empty()) {
@@ -103,6 +104,11 @@ void FtpDeployBackend::startUpload(const std::vector<std::string>& localFiles,
                 if (m_logCb) m_logCb("FTP 适配器类型转换失败: " + deviceKey);
                 failures.push_back(deviceKey);
                 continue;
+            }
+
+            if (useFtps) {
+                ftp->setUseFtps(true);
+                if (m_logCb) m_logCb("FTPS 模式已启用: " + deviceKey);
             }
 
             // 连接设备

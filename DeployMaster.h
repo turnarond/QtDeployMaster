@@ -51,6 +51,8 @@ public:
     ToolHost* toolHost() const { return m_toolHost; }
     DeviceBusWidget* deviceBusWidget() const { return m_deviceBusWidget; }
 
+    void initToolTabs();
+
 public slots:
     void appendFtpLog(const QString& log);
 
@@ -73,6 +75,7 @@ private slots:
 
 private:
     void setupLogQueryTab();
+    void setupFtpDeployTab();
     void setupTelnetDeployTab();
     void setupModbusClusterTab();
     void setupOpcUaClientTab(); // new
@@ -88,7 +91,12 @@ private:
     Ui::DeployMaster ui;
     ToolHost* m_toolHost = nullptr;
     DeviceBusWidget* m_deviceBusWidget = nullptr;
+    QLineEdit* m_remotePathEdit = nullptr;  // 远端预览路径（替代旧 ui.txt_remotePath）
     LogQueryTab* m_logQueryTab = nullptr;
+    std::shared_ptr<class FtpDeployBackend> m_ftpBackend;
+    std::shared_ptr<class TelnetBackend> m_telnetBackend;
+    std::shared_ptr<class WebSocketBackend> m_webSocketBackend;
+    class FtpDeployWidget* m_ftpDeployTab = nullptr;
     TelnetWidget* m_telnetDeployTab = nullptr;
     ModbusCluster* m_modbusCluster = nullptr;
     OpcUaClientTab* m_opcUaTab = nullptr; // new

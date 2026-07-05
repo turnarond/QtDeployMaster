@@ -135,7 +135,8 @@ void WebSocketClient::startServer()
         appendMessage("[Server] ⚠️ WSS 模式：SSL证书未配置，连接可能失败", true);
     }
 
-    if (!m_server->listen(QHostAddress::Any, port)) {
+    // 默认绑定到 localhost，防止暴露到所有网络接口
+    if (!m_server->listen(QHostAddress::LocalHost, port)) {
         appendMessage(QString("[Server] 启动失败: %1").arg(m_server->errorString()), true);
         delete m_server;
         m_server = nullptr;
