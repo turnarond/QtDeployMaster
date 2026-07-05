@@ -1,6 +1,9 @@
 #pragma once
 
 #include <QtWidgets/QMainWindow>
+#include <QComboBox>
+#include <QPushButton>
+#include <QLineEdit>
 #include <QStandardItemModel>
 #include <QStandardItem>
 #include "ui_DeployMaster.h"

@@ -392,7 +392,10 @@ void DeployMaster::setupRemotePreview()
     connect(m_protocolCombo, &QComboBox::currentIndexChanged, this, [this](int idx) {
         if (idx == 1) { // SCP 选中
             appendGlobalLog("SCP 功能即将推出，请使用 FTP 协议");
+            m_protocolCombo->blockSignals(true);
             m_protocolCombo->setCurrentIndex(0); // 回弹到 FTP
+            m_protocolCombo->blockSignals(false);
+            return;
         }
         refreshDeviceCombo();
     });
