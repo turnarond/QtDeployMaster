@@ -33,65 +33,53 @@ if(NOT LIBCURL_IMPL_LIB)
 endif()
 
 # ============================================================
-# Thirdparty 静态库编译
+# Thirdparty 静态库（预编译 .lib，源码为 ACOINFO 内部库）
 # 依赖链: lwcomm -> lwevent -> lwmsgq -> lwlog -> lwcommunicate -> lwserverbase
 # ============================================================
 set(THIRDPARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/thirdparty)
 
-# --- lwcomm（跨平台工具库） ---
-file(GLOB LWCOMM_SOURCES ${THIRDPARTY_DIR}/lwcomm/src/*.cpp)
-add_library(lwcomm STATIC ${LWCOMM_SOURCES})
-target_include_directories(lwcomm
-    PUBLIC  ${THIRDPARTY_DIR}/lwcomm ${THIRDPARTY_DIR}
-    PRIVATE ${THIRDPARTY_DIR}/lwcomm/src
-)
-target_compile_definitions(lwcomm PUBLIC lwcomm_EXPORTS)
+# --- lwcomm ---
+add_library(lwcomm STATIC IMPORTED)
+set_target_properties(lwcomm PROPERTIES IMPORTED_LOCATION "${LIB_DIR}/lwcomm.lib")
+target_include_directories(lwcomm INTERFACE ${THIRDPARTY_DIR}/lwcomm ${THIRDPARTY_DIR})
+target_compile_definitions(lwcomm INTERFACE lwcomm_EXPORTS)
 if(WIN32)
-    target_link_libraries(lwcomm PUBLIC ws2_32 iphlpapi)
+    target_link_libraries(lwcomm INTERFACE ws2_32 iphlpapi)
 endif()
 
-# --- lwevent（事件信号） ---
-add_library(lwevent STATIC
-    ${THIRDPARTY_DIR}/lwevent/lwevent.c
-)
-target_include_directories(lwevent PUBLIC ${THIRDPARTY_DIR}/lwevent ${THIRDPARTY_DIR})
-target_compile_definitions(lwevent PRIVATE LWEVENT_EXPORTS)
-target_link_libraries(lwevent PUBLIC lwcomm)
+# --- lwevent ---
+add_library(lwevent STATIC IMPORTED)
+set_target_properties(lwevent PROPERTIES IMPORTED_LOCATION "${LIB_DIR}/lwevent.lib")
+target_include_directories(lwevent INTERFACE ${THIRDPARTY_DIR}/lwevent ${THIRDPARTY_DIR})
+target_compile_definitions(lwevent INTERFACE LWEVENT_EXPORTS)
+target_link_libraries(lwevent INTERFACE lwcomm)
 
-# --- lwmsgq（消息队列） ---
-add_library(lwmsgq STATIC
-    ${THIRDPARTY_DIR}/lwmsgq/lwmsgq.c
-    ${THIRDPARTY_DIR}/lwmsgq/list.c
-)
-target_include_directories(lwmsgq PUBLIC ${THIRDPARTY_DIR}/lwmsgq ${THIRDPARTY_DIR})
-target_link_libraries(lwmsgq PUBLIC lwcomm lwevent)
+# --- lwmsgq ---
+add_library(lwmsgq STATIC IMPORTED)
+set_target_properties(lwmsgq PROPERTIES IMPORTED_LOCATION "${LIB_DIR}/lwmsgq.lib")
+target_include_directories(lwmsgq INTERFACE ${THIRDPARTY_DIR}/lwmsgq ${THIRDPARTY_DIR})
+target_link_libraries(lwmsgq INTERFACE lwcomm lwevent)
 
-# --- tinyxml2（XML 解析） ---
-# 必须放在 lwlog 之前，因为 lwlog 依赖 tinyxml2
+# --- tinyxml2（MIT License，保留源码） ---
 add_library(tinyxml2 STATIC
     ${THIRDPARTY_DIR}/tinyxml2/tinyxml2.cpp
 )
 target_include_directories(tinyxml2 PUBLIC ${THIRDPARTY_DIR}/tinyxml2 ${THIRDPARTY_DIR})
 
-# --- lwlog（日志库） ---
-file(GLOB LWLOG_SOURCES ${THIRDPARTY_DIR}/lwlog/src/*.cpp)
-add_library(lwlog STATIC ${LWLOG_SOURCES})
-target_include_directories(lwlog
-    PUBLIC  ${THIRDPARTY_DIR}/lwlog ${THIRDPARTY_DIR}
-    PRIVATE ${THIRDPARTY_DIR}/lwlog/src
-)
-target_compile_definitions(lwlog PUBLIC lwlog_EXPORTS)
-target_link_libraries(lwlog PUBLIC lwcomm tinyxml2)
+# --- lwlog ---
+add_library(lwlog STATIC IMPORTED)
+set_target_properties(lwlog PROPERTIES IMPORTED_LOCATION "${LIB_DIR}/lwlog.lib")
+target_include_directories(lwlog INTERFACE ${THIRDPARTY_DIR}/lwlog ${THIRDPARTY_DIR})
+target_compile_definitions(lwlog INTERFACE lwlog_EXPORTS)
+target_link_libraries(lwlog INTERFACE lwcomm tinyxml2)
 
-# --- lwcommunicate（网络通信库） ---
-file(GLOB LWCOMMUNICATE_ALL ${THIRDPARTY_DIR}/lwcommunicate/*.cpp)
-list(FILTER LWCOMMUNICATE_ALL EXCLUDE REGEX "lwconn_test\\.cpp$")
-add_library(lwcommunicate STATIC ${LWCOMMUNICATE_ALL})
-target_include_directories(lwcommunicate PUBLIC ${THIRDPARTY_DIR}/lwcommunicate ${THIRDPARTY_DIR})
-target_compile_definitions(lwcommunicate PRIVATE NOMINMAX)
-target_link_libraries(lwcommunicate PUBLIC lwcomm lwlog lwevent)
+# --- lwcommunicate ---
+add_library(lwcommunicate STATIC IMPORTED)
+set_target_properties(lwcommunicate PROPERTIES IMPORTED_LOCATION "${LIB_DIR}/lwcommunicate.lib")
+target_include_directories(lwcommunicate INTERFACE ${THIRDPARTY_DIR}/lwcommunicate ${THIRDPARTY_DIR})
+target_link_libraries(lwcommunicate INTERFACE lwcomm lwlog lwevent)
 
-# --- nanopb（Protobuf 编解码） ---
+# --- nanopb（zlib License，保留源码） ---
 add_library(nanopb STATIC
     ${THIRDPARTY_DIR}/nanopb/pb_encode.c
     ${THIRDPARTY_DIR}/nanopb/pb_decode.c
@@ -99,16 +87,11 @@ add_library(nanopb STATIC
 )
 target_include_directories(nanopb PUBLIC ${THIRDPARTY_DIR}/nanopb ${THIRDPARTY_DIR})
 
-# --- lwserverbase（服务框架） ---
-file(GLOB_RECURSE LWSERVERBASE_ALL ${THIRDPARTY_DIR}/lwserverbase/*.cpp)
-list(FILTER LWSERVERBASE_ALL EXCLUDE REGEX ".*/tests/.*")
-list(FILTER LWSERVERBASE_ALL EXCLUDE REGEX ".*/examples/.*")
-list(FILTER LWSERVERBASE_ALL EXCLUDE REGEX ".*/ConfigManager\\.cpp$")
-list(FILTER LWSERVERBASE_ALL EXCLUDE REGEX ".*/ProcessController\\.cpp$")
-list(FILTER LWSERVERBASE_ALL EXCLUDE REGEX ".*/vsoa_node/.*")
-add_library(lwserverbase STATIC ${LWSERVERBASE_ALL})
-target_include_directories(lwserverbase PUBLIC ${THIRDPARTY_DIR}/lwserverbase ${THIRDPARTY_DIR})
-target_link_libraries(lwserverbase PUBLIC lwcomm lwlog lwmsgq lwevent)
+# --- lwserverbase ---
+add_library(lwserverbase STATIC IMPORTED)
+set_target_properties(lwserverbase PROPERTIES IMPORTED_LOCATION "${LIB_DIR}/lwserverbase.lib")
+target_include_directories(lwserverbase INTERFACE ${THIRDPARTY_DIR}/lwserverbase ${THIRDPARTY_DIR})
+target_link_libraries(lwserverbase INTERFACE lwcomm lwlog lwmsgq lwevent)
 
 # 列出源文件
 set(SOURCES
