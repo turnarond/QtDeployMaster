@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # 项目名称和语言
-project(DeployMaster VERSION 1.0 LANGUAGES C CXX)
+project(DeviceForge VERSION 2.1.0 LANGUAGES C CXX)
 
 # 启用 AUTOMOC、AUTOUIC、AUTORCC（自动处理 Qt 的 moc/uic/rcc）
 set(CMAKE_AUTOMOC ON)
@@ -160,10 +160,10 @@ include_directories(
 
 
 # 创建可执行文件
-add_executable(DeployMaster ${SOURCES})
+add_executable(DeviceForge ${SOURCES})
 
 # 链接 Qt 模块
-target_link_libraries(DeployMaster PRIVATE
+target_link_libraries(DeviceForge PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
@@ -179,13 +179,13 @@ target_link_libraries(DeployMaster PRIVATE
 )
 
 # 构建后复制 libcurl-x64.dll 到输出目录（运行时依赖）
-add_custom_command(TARGET DeployMaster POST_BUILD
+add_custom_command(TARGET DeviceForge POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${LIB_DIR}/libcurl-x64.dll"
-        "$<TARGET_FILE_DIR:DeployMaster>"
+        "$<TARGET_FILE_DIR:DeviceForge>"
     COMMENT "Copying libcurl-x64.dll to output directory"
 )
 
 # （可选）设置资源文件或翻译文件
 # qt6_add_resources(RESOURCES myapp.qrc)
-# target_sources(DeployMaster PRIVATE ${RESOURCES})
+# target_sources(DeviceForge PRIVATE ${RESOURCES})

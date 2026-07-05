@@ -12,7 +12,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>DeployMaster - FTP &amp; Telnet 批量运维工具</string>
+   <string>DeviceForge - 工业设备批量运维平台</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
