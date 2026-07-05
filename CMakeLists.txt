@@ -51,7 +51,7 @@ endif()
 add_library(lwevent STATIC IMPORTED)
 set_target_properties(lwevent PROPERTIES IMPORTED_LOCATION "${LIB_DIR}/lwevent.lib")
 target_include_directories(lwevent INTERFACE ${THIRDPARTY_DIR}/lwevent ${THIRDPARTY_DIR})
-target_compile_definitions(lwevent INTERFACE LWEVENT_EXPORTS)
+# lwevent 为静态库，无需 EXPORTS 宏
 target_link_libraries(lwevent INTERFACE lwcomm)
 
 # --- lwmsgq ---
