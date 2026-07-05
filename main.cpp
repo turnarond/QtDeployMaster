@@ -77,6 +77,8 @@ int main(int argc, char *argv[])
             return new WebSocketWidget(parent);
         });
 
+    window.initToolTabs();
+
     // 创建 FtpPresenter 实例（订阅 EventBus 事件，连接部署管道）
     // 临时禁用: FtpPresenter.cpp 存在 QPointer 类型兼容性问题，待 Task 13 重构
     // auto* ftpPresenter = new FtpPresenter(&window);

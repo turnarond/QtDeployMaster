@@ -32,6 +32,7 @@ public:
     bool deleteDirectory(const std::string& remotePath);
     bool clearRemoteDirectory(const std::string& remotePath);
     void setProgressCallback(std::function<void(int)> cb);
+    void setUseFtps(bool useFtps);
 
 private:
     struct Impl;

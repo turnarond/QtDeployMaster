@@ -28,4 +28,17 @@ struct DeviceInfo {
 struct AuthInfo {
     std::string user;
     std::string password;
+
+    void clear() {
+        if (!password.empty()) {
+            char* pw = password.data();
+            for (size_t i = 0; i < password.size(); ++i) pw[i] = '\0';
+            password.clear();
+        }
+        if (!user.empty()) {
+            char* us = user.data();
+            for (size_t i = 0; i < user.size(); ++i) us[i] = '\0';
+            user.clear();
+        }
+    }
 };

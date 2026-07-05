@@ -44,7 +44,8 @@ public:
     void startUpload(const std::vector<std::string>& localFiles,
                      const std::string& remotePath,
                      bool clearBeforeDeploy,
-                     bool rebootAfterDeploy);
+                     bool rebootAfterDeploy,
+                     bool useFtps = false);
     void cancelUpload();
 
     // 进度回调设置（由 Widget 调用，跨线程安全）

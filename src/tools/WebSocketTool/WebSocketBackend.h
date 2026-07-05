@@ -62,6 +62,9 @@ public:
     bool isRunning() const { return m_isRunning; }
     bool isServerMode() const { return m_isServerMode; }
 
+    void setBindAddress(const QString& addr) { m_bindAddress = addr; }
+    void setAuthToken(const std::string& tok) { m_authToken = tok; }
+
     // 回调设置（由 Widget 调用，跨线程安全）
     using LogCallback = std::function<void(const std::string&)>;
     using MessageCallback = std::function<void(const std::string&)>;
@@ -112,6 +115,9 @@ private:
     bool m_isRunning = false;          // 仅主线程访问
     bool m_isServerMode = true;        // 仅主线程访问
     std::atomic<bool> m_cancelled{false}; // svc() 线程读取，主线程写入
+
+    QString m_bindAddress = "127.0.0.1";
+    std::string m_authToken;
 
     std::vector<DeviceInfo> m_devices;
     AuthInfo m_auth;

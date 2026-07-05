@@ -19,6 +19,7 @@
 #include <QHostAddress>
 #include <QSslConfiguration>
 #include <QUrl>
+#include <QUrlQuery>
 
 WebSocketBackend::WebSocketBackend()
 {
@@ -81,7 +82,8 @@ void WebSocketBackend::startServer(int port, bool sslMode)
         if (m_logCb) m_logCb("[Server] WSS 模式：SSL 证书未配置，连接可能失败");
     }
 
-    if (!m_server->listen(QHostAddress::Any, static_cast<quint16>(port))) {
+    QHostAddress bindAddr(m_bindAddress);
+    if (!m_server->listen(bindAddr, static_cast<quint16>(port))) {
         std::string err = m_server->errorString().toStdString();
         if (m_errorCb) m_errorCb("启动失败: " + err);
         if (m_logCb) m_logCb("[Server] 启动失败: " + err);
@@ -142,6 +144,17 @@ void WebSocketBackend::onNewConnection()
     QWebSocket* client = m_server->nextPendingConnection();
     if (!client) return;
 
+    if (!m_authToken.empty()) {
+        QUrlQuery query(client->requestUrl());
+        if (query.queryItemValue("token").toStdString() != m_authToken) {
+            std::string addr = client->peerAddress().toString().toStdString();
+            if (m_logCb) m_logCb("[Server] 认证失败，拒绝: " + addr);
+            client->close(QWebSocketProtocol::CloseCodePolicyViolated, "认证失败");
+            client->deleteLater();
+            return;
+        }
+    }
+
     QObject::connect(client, &QWebSocket::textMessageReceived,
                      [this, client](const QString& msg) { onServerTextMessage(msg, client); });
     QObject::connect(client, &QWebSocket::disconnected,
@@ -184,13 +197,13 @@ void WebSocketBackend::onServerTextMessage(const QString& message, QWebSocket* c
             serverPublishToSubscribers(topic, publishMsg);
             if (m_logCb) {
                 m_logCb("[Server] 客户端 " + addr + " 发布到主题 "
-                        + topic.toStdString() + ": " + publishMsg.toStdString());
+                        + topic.toStdString() + " (" + std::to_string(publishMsg.size()) + " 字节)");
             }
         }
     } else {
         std::string fullMsg = message.toStdString();
         if (m_messageCb) m_messageCb(addr + "> " + fullMsg);
-        if (m_logCb) m_logCb("[Server] 收到 " + addr + " 的消息: " + fullMsg);
+        if (m_logCb) m_logCb("[Server] 收到 " + addr + " 的消息 (" + std::to_string(fullMsg.size()) + " 字节)");
     }
 }
 
@@ -293,12 +306,12 @@ void WebSocketBackend::onClientTextMessage(const QString& message)
             QString topicMsg = parts.mid(2).join(":");
             std::string full = "[主题 " + topic.toStdString() + "] " + topicMsg.toStdString();
             if (m_messageCb) m_messageCb(full);
-            if (m_logCb) m_logCb("[Client] 收到 " + full);
+            if (m_logCb) m_logCb("[Client] 收到主题 " + topic.toStdString() + " 消息 (" + std::to_string(topicMsg.size()) + " 字节)");
         }
     } else {
         std::string full = message.toStdString();
         if (m_messageCb) m_messageCb(full);
-        if (m_logCb) m_logCb("[Client] 收到消息: " + full);
+        if (m_logCb) m_logCb("[Client] 收到消息 (" + std::to_string(full.size()) + " 字节)");
     }
 }
 
@@ -357,7 +370,7 @@ void WebSocketBackend::publish(const std::string& topic, const std::string& mess
         // Server 模式：直接向订阅者发送
         serverPublishToSubscribers(qTopic, qMsg);
         if (m_logCb) {
-            m_logCb("[Server] 发布消息到主题 " + topic + ": " + message);
+            m_logCb("[Server] 发布消息到主题 " + topic + " (" + std::to_string(message.size()) + " 字节)");
         }
     } else {
         // Client 模式：向服务器发送 PUBLISH 协议消息
@@ -365,7 +378,7 @@ void WebSocketBackend::publish(const std::string& topic, const std::string& mess
             QString publishMsg = "PUBLISH:" + qTopic + ":" + qMsg;
             m_client->sendTextMessage(publishMsg);
             if (m_logCb) {
-                m_logCb("[Client] 发布消息到主题 " + topic + ": " + message);
+                m_logCb("[Client] 发布消息到主题 " + topic + " (" + std::to_string(message.size()) + " 字节)");
             }
         } else {
             if (m_errorCb) m_errorCb("客户端未连接");

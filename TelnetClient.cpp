@@ -165,7 +165,9 @@ void TelnetClient::onReadyRead()
     }
 
     QString response = QString::fromUtf8(cleanData).trimmed();
+#ifdef DEPLOYMASTER_DEBUG_TELNET
     qDebug() << "Telnet RX:" << response;
+#endif
 
     // emit received data for consumers
     if (!response.isEmpty()) {
