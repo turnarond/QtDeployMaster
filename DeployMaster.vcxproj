@@ -162,16 +162,6 @@
   <ItemGroup>
     <!-- tinyxml2 (MIT) -->
     <ClCompile Include="src\thirdparty\tinyxml2\tinyxml2.cpp" />
-
-    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_base.cpp" />
-    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_device.cpp" />
-    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_manager.cpp" />
-    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_pool.cpp" />
-    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_utils.cpp" />
-    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_tcp_client.cpp" />
-    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_tcp_server.cpp" />
-    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_udp.cpp" />
-    <ClCompile Include="src\thirdparty\lwcommunicate\lwconn_serial.cpp" />
     <!-- nanopb -->
     <ClCompile Include="src\thirdparty\nanopb\pb_encode.c" />
     <ClCompile Include="src\thirdparty\nanopb\pb_decode.c" />
