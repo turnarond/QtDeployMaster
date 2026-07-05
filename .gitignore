@@ -367,4 +367,3 @@ build/
 build_release/
 dist/
 *.zip
-*.sln
