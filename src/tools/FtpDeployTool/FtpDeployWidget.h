@@ -20,7 +20,6 @@
 #include <QPushButton>
 #include <QCheckBox>
 #include <QListWidget>
-#include <QSpinBox>
 #include <QGridLayout>
 
 class FtpDeployBackend;
@@ -55,7 +54,6 @@ private:
 
     // UI 控件
     QLineEdit*    m_remotePathEdit = nullptr;
-    QSpinBox*     m_timeoutSpin    = nullptr;
     QCheckBox*    m_clearCheck     = nullptr;
     QCheckBox*    m_rebootCheck    = nullptr;
     QCheckBox*    m_ftpsCheck      = nullptr;

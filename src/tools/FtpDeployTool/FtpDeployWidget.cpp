@@ -44,14 +44,12 @@ void FtpDeployWidget::setupUi()
     m_remotePathEdit->setPlaceholderText("/app");
     configLayout->addWidget(m_remotePathEdit, 0, 1, 1, 3);
 
-    // 行 1: 超时设置
+    // 行 1: 安全选项（TODO: 后端支持可配置超时后恢复超时设置）
+    // 超时当前硬编码在 FtpAdapter 中（300s 上传/下载）
     configLayout->addWidget(new QLabel("超时(秒):", this), 1, 0);
-    m_timeoutSpin = new QSpinBox(this);
-    m_timeoutSpin->setRange(5, 600);
-    m_timeoutSpin->setValue(30);
-    configLayout->addWidget(m_timeoutSpin, 1, 1);
-
-    // 行 2（原行 1）: 安全选项
+    auto* timeoutLabel = new QLabel("300 (默认)", this);
+    timeoutLabel->setToolTip("FTP 上传/下载超时当前固定 300 秒，后续版本支持自定义");
+    configLayout->addWidget(timeoutLabel, 1, 1);
     m_ftpsCheck = new QCheckBox("FTPS 加密传输", this);
     m_ftpsCheck->setToolTip("使用 FTP over TLS 加密，防止凭证和文件在网络中被窃听");
     configLayout->addWidget(m_ftpsCheck, 1, 2, 1, 2);
