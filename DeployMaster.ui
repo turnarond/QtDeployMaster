@@ -94,7 +94,7 @@
               </widget>
              </item>
              <item>
-              <widget class="DropListWidget" name="list_uploadedItems">
+              <widget class="QListWidget" name="list_uploadedItems">
                <property name="minimumSize">
                 <size>
                  <width>0</width>
@@ -464,7 +464,7 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>DropListWidget</class>
+   <class>QListWidget</class>
    <extends>QListWidget</extends>
    <header>droplistwidget.h</header>
   </customwidget>

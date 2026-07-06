@@ -1,6 +1,4 @@
 #include "DeployMaster.h"
-#include "TelnetClient.h"
-
 #include <QFileInfo>
 #include <QFileDialog>
 #include <QString>
@@ -197,88 +195,7 @@ void DeployMaster::onAddFolderClicked()
 
 void DeployMaster::onDeployClicked()
 {
-    QString user = m_deviceBusWidget ? m_deviceBusWidget->user() : QString();
-    QString pass = m_deviceBusWidget ? m_deviceBusWidget->password() : QString();
-    QString remotePath = m_remotePathEdit->text().trimmed();
-    if (!remotePath.endsWith('/')) remotePath += '/';
-
-    if (uploadItems.isEmpty()) {
-        appendGlobalLog("❌ 错误：请至少添加一个要上传的文件或文件夹！");
-        return;
-    }
-    if (user.isEmpty() || pass.isEmpty()) {
-        appendGlobalLog("❌ 错误：请输入用户名和密码！");
-        return;
-    }
-
-    QStringList ips = getTargetIPs();
-    if (ips.isEmpty()) {
-        appendGlobalLog("❌ 错误：请至少输入一个目标 IP！");
-        return;
-    }
-
-    bool shouldReboot = ui.chk_rebootAfterDeploy->isChecked();
-    bool shouldClearRemote = ui.chk_clearRemoteBeforeUpload->isChecked();
-
-    appendGlobalLog(QString("🚀 开始部署 %1 个内容到 %2 台设备...")
-        .arg(uploadItems.size()).arg(ips.size()));
-
-    // 构建要上传的文件列表
-    QStringList items;
-    for (const UploadItem& item : uploadItems) {
-        items << item.fullPath;
-    }
-
-    // TODO: 通过 ToolHost + FtpDeployBackend 触发部署（替换旧 EventBus 路径）
-    appendGlobalLog("⚠ 部署功能已迁移至「文件部署」Tool，请使用新的 Tool 界面。");
-}
-
-void DeployMaster::onFtpUploadFinished(const QStringList& deploySuccesses,
-    const QStringList& deployFailures,
-    bool shouldReboot,
-    const QString& user,
-    const QString& pass)
-{
-    QStringList rebootSuccess, rebootFailure;
-    if (shouldReboot && !deploySuccesses.isEmpty()) {
-        appendGlobalLog("🔄 开始发送重启命令...");
-
-        // 为每个成功设备创建 TelnetClient（在主线程！）
-        for (const QString& ip : deploySuccesses) {
-            TelnetClient tc;
-
-            if (!tc.syncConnectToHost(ip, 23, 3000)) {
-                rebootFailure << ip;
-                appendGlobalLog(QString("❌ 连接失败: %1").arg(ip));
-                continue;
-            }
-
-            if (!tc.syncLogin(user, pass, 5000)) {
-                rebootFailure << ip;
-                appendGlobalLog(QString("❌ 登录失败: %1").arg(ip));
-                continue;
-            }
-
-            tc.syncSendCommand("sync", 1000);
-            QThread::msleep(100);
-            if (tc.syncSendCommand("reboot -f", 1000)) {
-                rebootSuccess << ip;
-                appendGlobalLog(QString("✅ 重启命令已发送: %1").arg(ip));
-            }
-            else {
-                rebootFailure << ip;
-                appendGlobalLog(QString("⚠️ 命令发送异常: %1").arg(ip));
-            }
-        }
-
-        appendGlobalLog("🎉 批量重启完成！");
-        appendGlobalLog(QString("📊 重启成功: %1 | 重启失败: %2")
-            .arg(rebootSuccess.size()).arg(rebootFailure.size()));
-        if (!rebootFailure.isEmpty())
-            appendGlobalLog("❌ 失败列表: " + rebootFailure.join(", "));
-    }
-
-    ui.btn_deploy->setEnabled(true);
+    appendGlobalLog("部署功能已迁移至「文件部署」Tab");
 }
 
 void DeployMaster::onFilesDropped(const QStringList& filePaths)
@@ -298,7 +215,6 @@ void DeployMaster::onFilesDropped(const QStringList& filePaths)
 void DeployMaster::onFileItemCleanClicked()
 {
     ui.list_uploadedItems->clear();
-    uploadItems.clear();
 }
 
 void DeployMaster::onClearLogClicked()
@@ -306,31 +222,9 @@ void DeployMaster::onClearLogClicked()
     ui.txt_globalLog->clear();
 }
 
-void DeployMaster::addFileToList(const QString& filePath)
-{
-    // 检查文件是否已经在列表中，避免重复添加
-    QList<QListWidgetItem*> existingItems = ui.list_uploadedItems->findItems(filePath, Qt::MatchExactly);
-    if (existingItems.isEmpty()) {
-        ui.list_uploadedItems->addItem(filePath);
-        UploadItem item;
-        item.isFolder = false;
-        item.fullPath = filePath;
-        uploadItems.push_back(item);
-    }
-}
+void DeployMaster::addFileToList(const QString&) {}
 
-void DeployMaster::addFolderToList(const QString& folderPath)
-{
-    // 检查文件夹是否已经在列表中，避免重复添加
-    QList<QListWidgetItem*> existingItems = ui.list_uploadedItems->findItems(folderPath, Qt::MatchExactly);
-    if (existingItems.isEmpty()) {
-        ui.list_uploadedItems->addItem(folderPath);
-        UploadItem item;
-        item.isFolder = true;;
-        item.fullPath = folderPath;
-        uploadItems.push_back(item);
-    }
-}
+void DeployMaster::addFolderToList(const QString&) {}
 
 void DeployMaster::appendGlobalLog(const QString& log)
 {
