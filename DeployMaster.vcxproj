@@ -124,7 +124,6 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="DeployMaster.cpp" />
-    <ClCompile Include="LogQueryTab.cpp" />
     <ClCompile Include="ModbusCluster.cpp" />
     <ClCompile Include="OpcUaClient.cpp" />
   </ItemGroup>
@@ -192,7 +191,6 @@
   <!-- ============================================================ -->
   <ItemGroup>
     <QtMoc Include="DeployMaster.h" />
-    <QtMoc Include="LogQueryTab.h" />
     <QtMoc Include="ModbusCluster.h" />
     <QtMoc Include="OpcUaClient.h" />
   </ItemGroup>
