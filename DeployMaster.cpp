@@ -43,7 +43,6 @@ DeployMaster::DeployMaster(QWidget* parent)
     m_toolHost = new ToolHost(this);
 
     setupFtpDeployTab();
-    setupLogQueryTab();
     setupModbusClusterTab();
     setupOpcUaClientTab();
 
@@ -96,14 +95,6 @@ void DeployMaster::setupFtpDeployTab()
     m_ftpBackend = backend;
     m_ftpDeployTab = widget;
     ui.tabWidget->addTab(m_ftpDeployTab, tr("文件部署"));
-}
-
-void DeployMaster::setupLogQueryTab()
-{
-    m_logQueryTab = new LogQueryTab(this, this);
-    // 添加到主窗口的 tabWidget
-    ui.tabWidget->addTab(m_logQueryTab, tr("日志查询"));
-
 }
 
 void DeployMaster::setupTelnetDeployTab()
@@ -320,6 +311,9 @@ void DeployMaster::setupRemotePreview()
     m_refreshBtn = new QPushButton("刷新", this);
     connect(m_refreshBtn, &QPushButton::clicked, this, &DeployMaster::refreshRemoteFiles);
     devRow->addWidget(m_refreshBtn);
+    auto* downloadBtn = new QPushButton("下载", this);
+    connect(downloadBtn, &QPushButton::clicked, this, &DeployMaster::onDownloadRemoteFile);
+    devRow->addWidget(downloadBtn);
 
     // --- 路径行 ---
     auto* pathRow = new QHBoxLayout();
@@ -523,10 +517,47 @@ void DeployMaster::onRemoteFileDoubleClicked(const QModelIndex& index)
             refreshRemoteFiles();
         }
     } else if (isDirectory) {
-        // 双击普通目录项，进入该目录
         QString path = item->data(Qt::UserRole).toString();
         currentRemotePath = path;
         appendGlobalLog(QString("📁 进入目录: %1").arg(path));
         refreshRemoteFiles();
     }
+}
+
+void DeployMaster::onDownloadRemoteFile()
+{
+    QModelIndex idx = ui.tree_remoteFiles->currentIndex();
+    if (!idx.isValid()) {
+        appendGlobalLog("请先选择要下载的文件");
+        return;
+    }
+    QStandardItem* item = remoteFileModel->itemFromIndex(idx);
+    if (!item) return;
+    bool isDir = item->data(Qt::UserRole + 1).toBool();
+    if (isDir) {
+        appendGlobalLog("暂不支持下载目录，请选择单个文件");
+        return;
+    }
+    QString remotePath = item->data(Qt::UserRole).toString();
+    QString fileName = item->text().trimmed();
+    QString localDir = QFileDialog::getExistingDirectory(this, "选择保存目录");
+    if (localDir.isEmpty()) return;
+
+    appendGlobalLog("下载: " + fileName + " → " + localDir);
+    QtConcurrent::run([=]() {
+        try {
+            FtpManager ftm(currentRemoteIP, 21);
+            ftm.setCredentials(
+                m_deviceBusWidget->user(),
+                m_deviceBusWidget->password());
+            ftm.downloadFile(remotePath, localDir + "/" + fileName);
+            QMetaObject::invokeMethod(this, [this, fileName]() {
+                appendGlobalLog("下载完成: " + fileName);
+            }, Qt::QueuedConnection);
+        } catch (const std::exception& e) {
+            QMetaObject::invokeMethod(this, [this, msg = QString::fromStdString(e.what())]() {
+                appendGlobalLog("下载失败: " + msg);
+            }, Qt::QueuedConnection);
+        }
+    });
 }
