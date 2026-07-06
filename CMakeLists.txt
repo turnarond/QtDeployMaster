@@ -98,8 +98,6 @@ set(SOURCES
     main.cpp
     DeployMaster.cpp
     OpcUaClient.cpp
-    LogQueryTab.cpp
-    ModbusCluster.cpp
     # 日志桥接
     src/logging/LogBridge.cpp
 
