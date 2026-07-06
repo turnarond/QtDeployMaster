@@ -97,8 +97,6 @@ target_link_libraries(lwserverbase INTERFACE lwcomm lwlog lwmsgq lwevent)
 set(SOURCES
     main.cpp
     DeployMaster.cpp
-    DropListWidget.cpp
-    TelnetClient.cpp
     OpcUaClient.cpp
     LogQueryTab.cpp
     ModbusCluster.cpp
