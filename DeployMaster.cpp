@@ -16,6 +16,8 @@
 #include "src/tools/WebSocketTool/WebSocketBackend.h"
 #include "src/tools/FtpDeployTool/FtpDeployWidget.h"
 #include "src/tools/FtpDeployTool/FtpDeployBackend.h"
+#include "src/tools/ModbusTool/ModbusWidget.h"
+#include "src/tools/ModbusTool/ModbusBackend.h"
 
 #include "src/framework/ToolHost.h"
 #include "src/ui/DeviceBusWidget.h"
@@ -127,8 +129,21 @@ void DeployMaster::setupTelnetDeployTab()
 
 void DeployMaster::setupModbusClusterTab()
 {
-    m_modbusCluster = new ModbusCluster(this);
-    ui.tabWidget->addTab(m_modbusCluster, tr("MODBUS测试"));
+    auto backend = std::make_shared<ModbusBackend>();
+    auto* widget = new ModbusWidget(this);
+
+    int rc = backend->OnStart(0, nullptr);
+    if (rc != 0) {
+        appendGlobalLog("❌ ModbusTool Backend 启动失败 (rc=" + QString::number(rc) + ")");
+        delete widget;
+        return;
+    }
+
+    widget->setBackend(backend.get());
+    widget->onToolStart();
+    m_modbusBackend = backend;
+    m_modbusWidget = widget;
+    ui.tabWidget->addTab(m_modbusWidget, tr("MODBUS 测试"));
 }
 
 // new: setup for opc ua
