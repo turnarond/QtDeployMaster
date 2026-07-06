@@ -8,7 +8,6 @@
 #include <QStandardItem>
 #include "ui_DeployMaster.h"
 #include "LogQueryTab.h"
-#include "ModbusCluster.h"
 #include "src/framework/AppState.h"
 #include "src/model/FtpManager.h"
 
@@ -97,7 +96,8 @@ private:
     std::shared_ptr<class WebSocketBackend> m_webSocketBackend;
     class FtpDeployWidget* m_ftpDeployTab = nullptr;
     TelnetWidget* m_telnetDeployTab = nullptr;
-    ModbusCluster* m_modbusCluster = nullptr;
+    std::shared_ptr<class ModbusBackend> m_modbusBackend;
+    class ModbusWidget* m_modbusWidget = nullptr;
     OpcUaClientTab* m_opcUaTab = nullptr; // new
     WebSocketWidget* m_webSocketWidget = nullptr; // migrated to Tool architecture
 };
