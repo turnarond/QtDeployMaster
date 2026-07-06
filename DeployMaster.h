@@ -7,7 +7,6 @@
 #include <QStandardItemModel>
 #include <QStandardItem>
 #include "ui_DeployMaster.h"
-#include "FtpRemoteItem.h"
 #include "LogQueryTab.h"
 #include "ModbusCluster.h"
 #include "src/framework/AppState.h"
@@ -38,7 +37,7 @@ public:
 
 private:
     QString lastUsedDirectory; // 记录上次使用的目录
-    QList<UploadItem> uploadItems;
+    // 旧 deploy 列表已清理
     
     // 远端预览相关
     QString currentRemoteIP; // 当前选中的远程设备IP
@@ -66,12 +65,6 @@ private slots:
     void onFileItemCleanClicked();
     void onDeployClicked();
     void onClearLogClicked();
-
-    void onFtpUploadFinished(const QStringList& deploySuccesses,
-        const QStringList& deployFailures,
-        bool shouldReboot,
-        const QString& user,
-        const QString& pass);
 
 private slots:
     void buildRemoteFileTree(const QList<FtpFileInfo>& files);

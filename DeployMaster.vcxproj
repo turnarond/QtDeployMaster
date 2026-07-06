@@ -124,8 +124,6 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="DeployMaster.cpp" />
-    <ClCompile Include="DropListWidget.cpp" />
-    <ClCompile Include="TelnetClient.cpp" />
     <ClCompile Include="LogQueryTab.cpp" />
     <ClCompile Include="ModbusCluster.cpp" />
     <ClCompile Include="OpcUaClient.cpp" />
@@ -174,7 +172,6 @@
   <!-- 数据结构头文件（ClCompile 让它们参与编译，确保无孤立引用）        -->
   <!-- ============================================================ -->
   <ItemGroup>
-    <ClInclude Include="FtpRemoteItem.h" />
   </ItemGroup>
   <!-- ============================================================ -->
   <!-- Qt MOC + UI + RCC 文件                                         -->
@@ -192,8 +189,6 @@
   <!-- ============================================================ -->
   <ItemGroup>
     <QtMoc Include="DeployMaster.h" />
-    <QtMoc Include="DropListWidget.h" />
-    <QtMoc Include="TelnetClient.h" />
     <QtMoc Include="LogQueryTab.h" />
     <QtMoc Include="ModbusCluster.h" />
     <QtMoc Include="OpcUaClient.h" />
