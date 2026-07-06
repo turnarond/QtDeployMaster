@@ -149,6 +149,9 @@
     <!-- UI 组件 -->
     <ClCompile Include="src\ui\DeviceBusWidget.cpp" />
     <!-- Tool 实现 -->
+    <ClCompile Include="src\tools\ModbusTool\ModbusBackend.cpp" />
+    <ClCompile Include="src\tools\ModbusTool\ModbusWidget.cpp" />
+    <QtMoc Include="src\tools\ModbusTool\ModbusWidget.h" />
     <ClCompile Include="src\tools\FtpDeployTool\FtpDeployBackend.cpp" />
     <ClCompile Include="src\tools\FtpDeployTool\FtpDeployWidget.cpp" />
     <ClCompile Include="src\tools\TelnetTool\TelnetBackend.cpp" />

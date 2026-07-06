@@ -122,6 +122,8 @@ set(SOURCES
     src/ui/DeviceBusWidget.cpp
 
     # Tool 实现
+    src/tools/ModbusTool/ModbusBackend.cpp
+    src/tools/ModbusTool/ModbusWidget.cpp
     src/tools/FtpDeployTool/FtpDeployBackend.cpp
     src/tools/FtpDeployTool/FtpDeployWidget.cpp
     src/tools/TelnetTool/TelnetBackend.cpp
