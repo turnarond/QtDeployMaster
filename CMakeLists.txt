@@ -130,6 +130,8 @@ set(SOURCES
     src/tools/WebSocketTool/WebSocketWidget.cpp
     src/tools/NetRelayTool/NetRelayBackend.cpp
     src/tools/NetRelayTool/NetRelayWidget.cpp
+    src/tools/NetRelayTool/RelayRecorder.cpp
+    src/tools/NetRelayTool/RelayRecording.cpp
 
     # 新Presenter文件
     # src/presenter/FtpPresenter.cpp — 临时禁用: QPointer<FtpManager> 类型错误（待重构）
