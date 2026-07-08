@@ -4,6 +4,8 @@ set(NETRELAY_DIR ${CMAKE_SOURCE_DIR}/src/tools/NetRelayTool)
 
 add_executable(tst_nrec
     NetRelayTool/tst_nrec.cpp
+    ${NETRELAY_DIR}/RelayRecorder.cpp
+    ${NETRELAY_DIR}/RelayRecording.cpp
 )
 target_include_directories(tst_nrec PRIVATE
     ${NETRELAY_DIR}
