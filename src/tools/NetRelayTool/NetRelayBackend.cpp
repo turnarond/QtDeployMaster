@@ -138,8 +138,8 @@ void NetRelayBackend::startReplay(const QString& nrecPath, const QString& consum
     auto errFired = std::make_shared<bool>(false);
     m_player->setErrorCallback([this, errFired](const std::string& s){
         *errFired = true;
-        reportError(s);
         m_mode = RelayMode::Idle;             // 失败回到 Idle
+        log(s);                                // 记录一次（避免 reportError 的 m_errorCb+m_logCb 双写）
         if (m_replayErrorCb) m_replayErrorCb(s);
     });
     m_player->setProgressCallback([this](int p, int t, qint64 ts){
