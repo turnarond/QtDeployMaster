@@ -128,6 +128,11 @@ set(SOURCES
     src/tools/TelnetTool/TelnetWidget.cpp
     src/tools/WebSocketTool/WebSocketBackend.cpp
     src/tools/WebSocketTool/WebSocketWidget.cpp
+    src/tools/NetRelayTool/NetRelayBackend.cpp
+    src/tools/NetRelayTool/NetRelayWidget.cpp
+    src/tools/NetRelayTool/RelayRecorder.cpp
+    src/tools/NetRelayTool/RelayRecording.cpp
+    src/tools/NetRelayTool/RelayPlayer.cpp
 
     # 新Presenter文件
     # src/presenter/FtpPresenter.cpp — 临时禁用: QPointer<FtpManager> 类型错误（待重构）
@@ -170,3 +175,9 @@ add_custom_command(TARGET DeviceForge POST_BUILD
 # （可选）设置资源文件或翻译文件
 # qt6_add_resources(RESOURCES myapp.qrc)
 # target_sources(DeviceForge PRIVATE ${RESOURCES})
+
+# ============================================================
+# 测试（QtTest + CTest，仅 CMake 构建，不影响 VS/vcxproj 工程）
+# ============================================================
+enable_testing()
+add_subdirectory(tests)
