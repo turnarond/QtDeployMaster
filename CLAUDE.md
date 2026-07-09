@@ -154,7 +154,7 @@ DeployMaster.cpp             ToolHost (桥接层)          IProtocolAdapter
 - **TelnetTool**（`src/tools/TelnetTool/`）：TelnetBackend（TelnetAdapter → lwcommunicate）+ TelnetWidget，批量 Shell 命令，认证失败阻断
 - **WebSocketTool**（`src/tools/WebSocketTool/`）：WebSocketBackend（QWebSocket）+ WebSocketWidget，Server/Client，默认绑定 127.0.0.1 + 可选 Token 认证
 - **ModbusTool**（`src/tools/ModbusTool/`）：ModbusBackend（QModbusTcpClient）+ ModbusWidget，批量读写寄存器，QTimer 自动刷新
-- **NetRelayTool**（`src/tools/NetRelayTool/`）：NetRelayBackend（QTcpServer + QUdpSocket）+ NetRelayWidget，TCP/UDP 透明中继代理，双向流量双向原样转发，Hex+ASCII 实时视图 + 导出
+- **NetRelayTool**（`src/tools/NetRelayTool/`）：NetRelayBackend（QTcpServer + QUdpSocket）+ NetRelayWidget，TCP/UDP 透明中继代理，双向流量双向原样转发，Hex+ASCII 实时视图 + 导出；支持流量录制（`.nrec` 自定义二进制格式）+ 按原始时序回放上行到消费者（RelayRecorder/RelayRecording/RelayPlayer，RelayMode 中继/回放互斥状态机）
 
 ### 模块对应关系
 
@@ -165,7 +165,7 @@ DeployMaster.cpp             ToolHost (桥接层)          IProtocolAdapter
 | WebSocket | WebSocketWidget (Tool) | WebSocketBackend → QWebSocket | WebSocket (QWebSocket) | ✅ 已迁移 + 绑定/认证 |
 | 日志查询 | 已删除 | 功能由远端预览面板的下载按钮替代 |  | 🗑 已移除 |
 | MODBUS 测试 | ModbusWidget (Tool) | ModbusBackend → QModbusTcpClient | Modbus TCP | ✅ 已迁移 |
-| 网络调试 | NetRelayWidget (Tool) | NetRelayBackend → QTcpServer/QUdpSocket | TCP/UDP 透明代理 | ✅ 新增 (2026-07-08) |
+| 网络调试 | NetRelayWidget (Tool) | NetRelayBackend → QTcpServer/QUdpSocket | TCP/UDP 透明代理 + 录制回放 | ✅ 新增 (2026-07-08) |
 | OPC UA 客户端 | `OpcUaClientTab` | 演示模式/桩 | OPC UA（待实现） | 未实现 |
 
 ### UI 资源
@@ -188,7 +188,7 @@ DeployMaster.cpp             ToolHost (桥接层)          IProtocolAdapter
 - `src/tools/TelnetTool/`：TelnetBackend(.cpp/.h) / TelnetWidget(.cpp/.h)
 - `src/tools/WebSocketTool/`：WebSocketBackend(.cpp/.h) / WebSocketWidget(.cpp/.h)
 - `src/tools/ModbusTool/`：ModbusBackend(.cpp/.h) / ModbusWidget(.cpp/.h)
-- `src/tools/NetRelayTool/`：NetRelayBackend(.cpp/.h) / NetRelayWidget(.cpp/.h) — TCP/UDP 透明代理，双向流量捕获
+- `src/tools/NetRelayTool/`：NetRelayBackend(.cpp/.h) / NetRelayWidget(.cpp/.h) / NetRelayTypes.h / RelayRecorder(.cpp/.h) / RelayRecording(.cpp/.h) / RelayPlayer(.cpp/.h) — TCP/UDP 透明代理，双向流量捕获 + .nrec 录制/回放
 - `src/model/`：FtpManager(.cpp/.h)（旧，待 FtpAdapter 替换后移除）
 - `src/presenter/`：FtpPresenter(.cpp/.h) / ModbusPresenter(.cpp/.h)（旧，待 Tool 迁移完成后移除）
 - `src/utils/`：DeployEvent.h（旧，待完全移除 EventBus 后删除）
@@ -275,7 +275,7 @@ DeployMaster.cpp             ToolHost (桥接层)          IProtocolAdapter
 
 - **密码不持久化**：程序不保存密码，每次启动需手动输入
 
-- **尚无测试**：Phase 0-1 设计规划了单元测试（FtpAdapter/TelnetAdapter/ToolRegistry/DeviceBusWidget），但 `tests/` 目录和 CTest 配置尚未创建。计划在 Phase 2 全量迁移时同步补充
+- **测试现状**：NetRelayTool 已建立 QtTest 目标 `tst_nrec`（`tests/`，CMake/CTest），覆盖 .nrec 录制往返/坏文件拒绝/回放上行；其余模块仍无测试。Phase 0-1 设计规划的单元测试（FtpAdapter/TelnetAdapter/ToolRegistry/DeviceBusWidget）尚未补充，计划在后续迁移时同步完善
 
 - **深色主题色板**（darkstyle.qss）：
   - 背景底层: #0B0E14 | 面板/容器: #141820 | 边框: #252A33
