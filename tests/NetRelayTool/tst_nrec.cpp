@@ -1,5 +1,6 @@
 #include <QtTest/QtTest>
 #include <QDir>
+#include <QFileInfo>
 #include <QTemporaryFile>
 #include <QTcpServer>
 #include <QTcpSocket>
@@ -43,6 +44,91 @@ private slots:
         bad.write("XXXX garbage"); bad.close();
         NrecFile f; QString err;
         QVERIFY(!RelayRecording::load(path, f, err));   // 坏 magic 必须被拒
+        QVERIFY(!err.isEmpty());
+        QFile::remove(path);
+    }
+
+    // 写一个完整 32 字节头，magic 非 "NREC"（"XXXX" + 28 个 0）。
+    // 区别于 loadRejectsBadMagic：文件足够大能越过 size<kHeaderSize 守卫，
+    // 从而真正命中 memcmp magic 校验分支。
+    void loadRejectsBadMagicFullHeader() {
+        QString path = QDir::temp().filePath("tst_badmagic_full.nrec");
+        QFile bad(path); QVERIFY(bad.open(QIODevice::WriteOnly));
+        QByteArray hdr(32, '\0');
+        hdr[0] = 'X'; hdr[1] = 'X'; hdr[2] = 'X'; hdr[3] = 'X';
+        QCOMPARE(bad.write(hdr), qint64(32));
+        bad.close();
+        NrecFile f; QString err;
+        QVERIFY(!RelayRecording::load(path, f, err));   // 全头坏 magic 必须被拒
+        QVERIFY(!err.isEmpty());
+        QFile::remove(path);
+    }
+
+    // 有效 magic "NREC" + version=999，其余凑满 32 字节头，必须因版本不符被拒。
+    void loadRejectsBadVersion() {
+        QString path = QDir::temp().filePath("tst_badver.nrec");
+        QFile bad(path); QVERIFY(bad.open(QIODevice::WriteOnly));
+        QDataStream out(&bad);
+        out.setByteOrder(QDataStream::LittleEndian);
+        out.writeRawData(nrec::kMagic, 4);
+        out << quint16(999);              // 非法版本
+        out << quint8(0) << quint8(0);    // proto + rsv
+        out << qint64(0);                 // epoch
+        for (int i = 0; i < 16; ++i) out << quint8(0);  // reserved[16]
+        bad.close();
+        QCOMPARE(QFileInfo(path).size(), qint64(32));    // 头长度自校验
+        NrecFile f; QString err;
+        QVERIFY(!RelayRecording::load(path, f, err));    // 版本不符必须被拒
+        QVERIFY(!err.isEmpty());
+        QFile::remove(path);
+    }
+
+    // 用 RelayRecorder 写一条小记录的有效文件，再把记录头 length 字段
+    // 篡改为 0x7FFFFFFF（offset 46，小端），必须命中 len>remaining 越界拒绝。
+    void loadRejectsOversizeLength() {
+        QString path = QDir::temp().filePath("tst_oversize.nrec");
+        { RelayRecorder rec;
+          QVERIFY(rec.open(path, RelayProtocol::Tcp, 0));
+          rec.append(RelayDirection::Upstream, 1, 0, QByteArray("hi"));
+          rec.close(); }
+
+        // 先确认原文件可正常加载，排除构造错误
+        { NrecFile ok; QString e; QVERIFY2(RelayRecording::load(path, ok, e), qPrintable(e)); }
+
+        // length 字段偏移 = 32(头) + 1(dir) + 1(rsv) + 4(sid) + 8(ts) = 46
+        QFile f(path); QVERIFY(f.open(QIODevice::ReadWrite));
+        QVERIFY(f.seek(46));
+        QDataStream out(&f);
+        out.setByteOrder(QDataStream::LittleEndian);
+        out << quint32(0x7FFFFFFF);       // 篡改为超大长度
+        f.close();
+
+        NrecFile bad; QString err;
+        QVERIFY(!RelayRecording::load(path, bad, err));  // 超大 length 必须被拒
+        QVERIFY(!err.isEmpty());
+        QFile::remove(path);
+    }
+
+    // 有效 32 字节头 + 仅追加 5 字节（不足 18 字节记录头），
+    // 必须因 QDataStream 读到不完整记录头（status != Ok）被拒。
+    void loadRejectsTruncatedRecordHeader() {
+        QString path = QDir::temp().filePath("tst_trunc.nrec");
+        QFile bad(path); QVERIFY(bad.open(QIODevice::WriteOnly));
+        QDataStream out(&bad);
+        out.setByteOrder(QDataStream::LittleEndian);
+        out.writeRawData(nrec::kMagic, 4);
+        out << quint16(nrec::kVersion);   // 合法版本
+        out << quint8(0) << quint8(0);    // proto + rsv
+        out << qint64(0);                 // epoch
+        for (int i = 0; i < 16; ++i) out << quint8(0);  // reserved[16]
+        // 追加不完整的记录头（仅 5 字节，< 18）
+        const char frag[5] = { 0, 0, 1, 0, 0 };
+        out.writeRawData(frag, 5);
+        bad.close();
+        QCOMPARE(QFileInfo(path).size(), qint64(37));    // 32 头 + 5 碎片
+
+        NrecFile f; QString err;
+        QVERIFY(!RelayRecording::load(path, f, err));    // 截断记录头必须被拒
         QVERIFY(!err.isEmpty());
         QFile::remove(path);
     }
