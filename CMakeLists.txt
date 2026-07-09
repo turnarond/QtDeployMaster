@@ -98,6 +98,10 @@ set(SOURCES
     main.cpp
     DeployMaster.cpp
     OpcUaClient.cpp
+
+    # Qt 资源（QRC：darkstyle.qss 深色主题，AUTORCC 处理）
+    DeployMaster.qrc
+
     # 日志桥接
     src/logging/LogBridge.cpp
 
