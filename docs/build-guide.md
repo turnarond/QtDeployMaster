@@ -41,6 +41,22 @@ cmake --build . --config Release
 4. 生成 → 生成解决方案
 5. 确保 `lib/libcurl-x64.dll` 在输出目录（已通过构建后脚本自动复制）
 
+> 单元测试目标 `tst_nrec` 仅在 CMake 构建中提供，不包含在 VS/vcxproj 工程内。
+
+## 运行测试
+
+单元测试目标 `tst_nrec`（QtTest + CTest）随 CMake 构建自动生成，需要 Qt Test 模块。
+
+```bash
+cd build
+# 构建测试目标
+cmake --build . --config Release --target tst_nrec
+# 运行（CTest 已配置 Qt DLL 路径）
+ctest -C Release -R tst_nrec --output-on-failure
+```
+
+覆盖内容：`.nrec` 录制往返、坏 magic / 坏版本 / 超长 length / 截断文件拒绝、回放上行端到端（10 个用例）。
+
 ## 依赖说明
 
 | 依赖 | 位置 | 类型 |
