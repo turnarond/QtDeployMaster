@@ -219,11 +219,12 @@ void NetRelayWidget::setBackend(NetRelayBackend* backend)
     m_backend->setErrorCallback([this](const std::string& err) {
         QMetaObject::invokeMethod(this, [this, err]() {
             appendLog(QString::fromStdString("[错误] " + err));
-            // 中继启动/运行失败：完整复位控件，避免配置区被永久禁用导致无法修改错误输入
-            m_btnStart->setEnabled(true);
-            m_btnStop->setEnabled(false);
-            m_btnReplayStart->setEnabled(true);
-            setRelayControlsEnabled(true);
+            // 仅在中继未真正运行时复位控件；避免"忙拒绝"类错误把运行中的中继 UI 误置为停止
+            if (m_backend && !m_backend->isRunning()) {
+                m_btnStop->setEnabled(false);
+                m_btnReplayStart->setEnabled(true);
+                setRelayControlsEnabled(true);
+            }
         }, Qt::QueuedConnection);
     });
 
