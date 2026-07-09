@@ -1,5 +1,46 @@
 # Changelog
 
+## [2.1.0] — 2026-07-09
+
+### 工具迁移 + 网络调试中继 + 首个测试目标
+
+延续 2.0 的 Tool 架构，完成 Modbus 迁移、新增 NetRelayTool（网络调试中继 + 录制回放），并建立项目首个单元测试目标。
+
+### 新增
+
+#### NetRelayTool — 网络调试中继（`src/tools/NetRelayTool/`）
+- **透明中继代理**：数据生产者（TCP/UDP 客户端）连接工具，工具原封不动双向转发到真实消费者，不影响生产数据流运行
+- **TCP 透明代理**：`QTcpServer` 监听 + 每连接配对上游 `QTcpSocket`，双向 `readyRead→write` 中继
+- **UDP 会话代理**：`QUdpSocket` 按源地址区分会话，上游转发 + 回程路由，空闲会话 5 分钟超时清理
+- **实时 Hex+ASCII 视图**：区分方向（上行青绿 / 下行琥珀）+ 时间戳 + 会话号，单块渲染上限 64KB
+- **流量录制（`.nrec` 自定义二进制格式）**：`RelayRecorder` 按方向 + 相对时间戳 + 会话号 + 原始字节顺序落盘；`RelayRecording` 读取并校验（magic / 版本 / 长度上限 / 截断检测）
+- **按原始时序回放**：`RelayPlayer` 加载 `.nrec`，按相邻记录时间间隔重放上行数据到消费者（模拟生产者），支持原速 / 尽快、开始 / 暂停 / 停止 + 进度条
+- **中继/回放互斥状态机**：`RelayMode{Idle,Relaying,Replaying}`，含 UDP 异步 DNS 窗口期的互斥守卫
+
+#### Tool 迁移
+- **ModbusTool**（`src/tools/ModbusTool/`）— ModbusBackend（QModbusTcpClient）+ ModbusWidget，从旧 `ModbusCluster` 迁移到 Backend + Widget 架构
+
+#### 测试基础设施
+- **tst_nrec**（`tests/`，QtTest + CTest，仅 CMake 构建）— 项目首个单元测试目标，覆盖 `.nrec` 录制往返、坏 magic / 坏版本 / 超长 length / 截断记录头拒绝、回放上行端到端（10 个用例）
+
+### 安全加固（NetRelayTool，2026-07-08）
+- 绑定地址 fail-closed 校验（非法输入直接拒绝，不再静默回退到 0.0.0.0；仅接受 IP 字面量 / localhost / any）
+- 非回环监听时输出安全警告（中继无客户端鉴权）
+- 连接/会话数上限（默认 50），TCP pending 缓冲上限 1MB，UDP 会话空闲超时清理
+- 异步 DNS（`QHostInfo::lookupHost`）+ 代际令牌 + `m_dnsPending`，防止 stop/restart 后旧回调误触发与析构 UAF
+- `.nrec` 读取器对不可信文件加固（magic / 版本 / 长度上限 / 截断校验）
+- 导出前二次确认（提示含明文凭证/敏感数据）+ 导出/录制文件权限限制为仅所有者可读写
+- 日志仅记录方向/字节数，不含原始内容（与 Telnet/WebSocket 一致）
+
+### 修复
+- `RelayPlayer` 回放末条 TCP 记录被 `close()` 丢弃 — 完成前等待 `bytesWritten` flush
+- `RelayRecording` payload 长度无上限导致损坏文件触发超大分配 / `int` 溢出 — 按剩余文件字节校验
+- NetRelayTool UDP 异步 DNS 窗口期中继/回放互斥漏洞 — `startReplay` 增加 `isRunning()` 守卫 + DNS 分发点即置 `Relaying`
+- 回放失败时 UI 卡死（配置区被永久禁用）— 新增 replay-error 回调完整复位控件
+- 中继启动失败时配置区被永久禁用 — errorCallback 增加 `isRunning()` 运行态守卫
+
+---
+
 ## [2.0.0] — 2026-07-04
 
 ### 架构重构：可扩展通用设备运维平台
