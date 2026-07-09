@@ -158,7 +158,7 @@ DeviceForge/
 | 2.0.0 | 2026-07-04 | 插件化 Tool 架构 + Protocol Adapter 层 + 工业仪表盘主题 |
 | 1.0.0 | 2026-06 | 7 模块功能完整，MVP+EventBus 架构（已废弃） |
 
-[完整变更日志](CHANGELOG.md)
+[完整变更日志](CHANGELOG.md) · [发展路线图](ROADMAP.md)
 
 ---
 
