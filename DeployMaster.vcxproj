@@ -84,8 +84,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)lib\libcurl-x64.dll" "$(OutDir)libcurl.dll"</Command>
-      <Command>copy /Y "$(ProjectDir)lib\libssh2.dll" "$(OutDir)libssh2.dll"</Command>
+      <Command>copy /Y "$(ProjectDir)lib\libcurl-x64.dll" "$(OutDir)libcurl.dll"&#x0D;&#x0A;copy /Y "$(ProjectDir)lib\libssh2.dll" "$(OutDir)libssh2.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -115,8 +114,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)lib\libcurl-x64.dll" "$(OutDir)libcurl.dll"</Command>
-      <Command>copy /Y "$(ProjectDir)lib\libssh2.dll" "$(OutDir)libssh2.dll"</Command>
+      <Command>copy /Y "$(ProjectDir)lib\libcurl-x64.dll" "$(OutDir)libcurl.dll"&#x0D;&#x0A;copy /Y "$(ProjectDir)lib\libssh2.dll" "$(OutDir)libssh2.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <!-- ============================================================ -->
