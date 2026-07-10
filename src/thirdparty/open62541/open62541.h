@@ -41,7 +41,12 @@
  * Define one of the following. */
 
 /* #undef UA_ARCHITECTURE_WIN32 */
+/* 原始 amalgamation 在 Linux 生成，硬编码 UA_ARCHITECTURE_POSIX 会在 MSVC 下
+ * 拉取 <pthread.h> 编译失败。改为仅非 Windows 平台强制 POSIX，
+ * Windows(_WIN32) 交由下方 auto-select 选中 UA_ARCHITECTURE_WIN32。 */
+#ifndef _WIN32
 #define UA_ARCHITECTURE_POSIX
+#endif
 /* #undef UA_ARCHITECTURE_ZEPHYR */
 /* #undef UA_ARCHITECTURE_LWIP */
 /* #undef UA_ARCHITECTURE_FREERTOS */
