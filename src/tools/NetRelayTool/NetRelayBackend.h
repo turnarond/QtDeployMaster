@@ -24,6 +24,7 @@
 #include <QUdpSocket>
 #include <QHostAddress>
 #include <QHostInfo>
+#include <QNetworkInterface>
 #include <QTimer>
 #include <QElapsedTimer>
 #include <QByteArray>
@@ -71,6 +72,9 @@ public:
     void stopRelay();
     bool isRunning() const { return m_running; }
     void setMaxConnections(int n) { if (n > 0) m_maxConn = n; }
+
+    // 组播抓收（加入组播组，抄收数据 + 可选录制；对源与现有消费者零影响）
+    void startMulticastCapture(const QString& groupAddr, quint16 port, const QString& ifaceAddr);
 
     // --- 录制 ---
     void enableRecording(const QString& path);   // startRelay 前调用；启动时打开录制
@@ -179,6 +183,12 @@ private:
     QMap<QString, UdpSession*>  m_udpSessions;
     QTimer*                     m_udpCleanupTimer = nullptr;
     QElapsedTimer               m_udpElapsed;     // UDP 会话空闲计时基准
+
+    // 组播抓收状态
+    QUdpSocket*  m_mcastSocket = nullptr;   // 组播抓收 socket
+    QString      m_mcastGroup;              // 当前组播组地址
+    quint16      m_mcastPort = 0;           // 当前组播端口
+    void onMulticastReadyRead();            // 组播数据到达
 
     // 运行状态
     bool                        m_running = false;
