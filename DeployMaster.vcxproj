@@ -165,6 +165,7 @@
     <ClCompile Include="src\tools\NetRelayTool\RelayRecorder.cpp" />
     <ClCompile Include="src\tools\NetRelayTool\RelayRecording.cpp" />
     <ClCompile Include="src\tools\NetRelayTool\RelayPlayer.cpp" />
+    <ClCompile Include="src\tools\OpcUaClientTool\OpcUaClientBackend.cpp" />
   </ItemGroup>
   <!-- ============================================================ -->
   <!-- Thirdparty 源文件                                              -->
