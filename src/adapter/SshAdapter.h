@@ -31,7 +31,7 @@ private:
     LIBSSH2_CHANNEL*    m_channel = nullptr;  // subscribe 模式用，request 模式每次新建
     std::string         m_lastError;
     std::atomic<bool>   m_cancelled{false};
-    QSet<QString>       m_knownHosts;         // TOFU: 已接受的主机指纹集合
+    static QSet<QString> s_knownHosts;        // TOFU: 已接受的主机指纹集合（进程级共享）
     QFuture<void>       m_subscribeFuture;
     std::atomic<bool>   m_subscribeActive{false};
 
