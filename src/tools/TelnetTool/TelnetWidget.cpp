@@ -239,7 +239,8 @@ void TelnetWidget::onExecuteClicked()
     }
 
     // Telnet 明文凭证警告（首次弹出，可勾选不再提示）
-    {
+    // M10: 仅在选中 Telnet 协议时提示；SSH 加密传输无此风险
+    if (m_protoCombo->currentText() == "Telnet") {
         QSettings settings("turnarond", "DeviceForge");
         if (!settings.value("Telnet/SecurityWarningDontShowAgain", false).toBool()) {
             QMessageBox warnBox(this);

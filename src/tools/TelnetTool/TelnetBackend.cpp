@@ -110,10 +110,16 @@ void TelnetBackend::executeCommand(const std::vector<std::string>& ips,
             }
 
             // 构建设备信息
+            // C2: 端口按协议区分。telnet 固定 23；ssh 保持 0，
+            //     由 SshAdapter 回退到默认 22（原先硬编码 23 导致 SSH 连到 telnet 端口）
             DeviceInfo dev;
             dev.ip = ip;
-            dev.port = 23;
-            dev.protocol = "telnet";
+            if (m_selectedProtocol == "ssh") {
+                dev.port = 0;  // 交由 SshAdapter 使用默认 22
+            } else {
+                dev.port = 23;
+            }
+            dev.protocol = m_selectedProtocol.toStdString();
 
             // 连接设备
             if (m_logCb) m_logCb("正在连接: " + ip + " ...");

@@ -4,19 +4,22 @@
 #include <QCryptographicHash>
 #include <thread>
 
+// TOFU 已接受主机指纹集合 — 进程级静态存储，跨适配器实例共享
+QSet<QString> SshAdapter::s_knownHosts;
+
 // ============================================================
 // 构造 / 析构
 // ============================================================
 
 SshAdapter::SshAdapter()
 {
-    libssh2_init(0);
+    // libssh2_init(0) 在 main.cpp 进程级调用一次，此处不再重复初始化
 }
 
 SshAdapter::~SshAdapter()
 {
     disconnect();
-    libssh2_exit();
+    // 不调用 libssh2_exit()：会拆除进程级全局状态，影响其他适配器实例
 }
 
 // ============================================================
@@ -48,6 +51,8 @@ bool SshAdapter::connect(const DeviceInfo& device, const AuthInfo& auth)
 
     // 3. 握手（阻塞模式 — 由调用方放入后台线程）
     libssh2_session_set_blocking(m_session, 1);
+    // I5: 设置阻塞操作超时，防止握手/读写永久阻塞不可中断（默认 10s）
+    libssh2_session_set_timeout(m_session, 10000);
     if (libssh2_session_handshake(m_session, static_cast<libssh2_socket_t>(
             m_socket->socketDescriptor())) != 0) {
         m_lastError = "SSH 握手失败";
@@ -70,6 +75,9 @@ bool SshAdapter::connect(const DeviceInfo& device, const AuthInfo& auth)
         return false;
     }
 
+    // C1: 连接成功。disconnect() 曾将 m_cancelled 置 true，此处复位，
+    //     否则 request() 的 while(!m_cancelled) 读循环会立即退出导致 0 字节输出
+    m_cancelled = false;
     return true;
 }
 
@@ -91,7 +99,8 @@ void SshAdapter::disconnect()
 
     if (m_socket) {
         m_socket->close();
-        m_socket->deleteLater();
+        // I8: 在 QtConcurrent::run 线程中无事件循环，deleteLater 事件永不派发→泄漏
+        delete m_socket;
         m_socket = nullptr;
     }
 }
@@ -121,12 +130,20 @@ std::future<Response> SshAdapter::request(const Request& req)
             return r;
         }
 
+        // I5: 按请求设置阻塞操作超时，防止 libssh2_channel_read 永久阻塞
+        int timeoutMs = req.timeoutMs > 0 ? req.timeoutMs : 10000;
+        libssh2_session_set_timeout(m_session, timeoutMs);
+
         LIBSSH2_CHANNEL* ch = libssh2_channel_open_session(m_session);
         if (!ch) {
             r.success = false;
             r.errorMessage = "打开 SSH channel 失败";
             return r;
         }
+
+        // I4: 合并 stderr 到普通读流，使 libssh2_channel_read 同时返回 stdout+stderr
+        libssh2_channel_handle_extended_data2(ch,
+            LIBSSH2_CHANNEL_EXTENDED_DATA_MERGE);
 
         int rc = libssh2_channel_exec(ch, req.path.c_str());
         if (rc != 0) {
@@ -142,12 +159,13 @@ std::future<Response> SshAdapter::request(const Request& req)
 
         char buf[4096];
         std::string output;
+        r.success = true;  // I3: 默认成功，读错误分支置为 false，循环结束不再无条件覆盖
         while (!m_cancelled) {
             ssize_t n = libssh2_channel_read(ch, buf, sizeof(buf));
             if (n > 0) {
                 output.append(buf, static_cast<size_t>(n));
             } else if (n == 0) {
-                // 非阻塞模式下无数据可读；阻塞模式下不应出现
+                // 阻塞模式：0 表示读到 EOF/无更多数据
                 break;
             } else {
                 // n < 0: 错误
@@ -158,7 +176,7 @@ std::future<Response> SshAdapter::request(const Request& req)
         }
 
         libssh2_channel_send_eof(ch);
-        r.success = true;
+        // I3: 不再无条件 r.success = true；成功/失败由读循环决定
         r.statusCode = libssh2_channel_get_exit_status(ch);
         libssh2_channel_wait_closed(ch);
         libssh2_channel_free(ch);
@@ -220,17 +238,21 @@ bool SshAdapter::verifyHostKey()
 
     QString qfp = QString::fromStdString(fp);
 
-    if (!m_knownHosts.contains(qfp)) {
-        if (m_knownHosts.isEmpty()) {
-            // TOFU: 首次连接，自动接受
-            m_knownHosts.insert(qfp);
-            LWLOG_I("SSH TOFU: accepted host key " + fp);
-        } else {
-            // 同一批次中已有其他设备的指纹，新设备指纹不同——自动接受
-            m_knownHosts.insert(qfp);
-        }
+    // I7: 指纹已在进程级 TOFU 集合中 → 与历史一致，通过
+    if (s_knownHosts.contains(qfp)) {
+        return true;
     }
-    // 指纹已存在且匹配 → 通过
+
+    // I7: 集合非空但当前指纹不在其中 → 与首次连接不符，拒绝（防中间人攻击）
+    if (!s_knownHosts.isEmpty()) {
+        m_lastError = "SSH 主机密钥与首次连接时不符，可能存在中间人攻击";
+        LWLOG_W("SSH TOFU: host key mismatch, rejecting connection");
+        return false;
+    }
+
+    // I7: 集合为空（进程内首次 SSH 连接）→ 记录并接受
+    s_knownHosts.insert(qfp);
+    LWLOG_I("SSH TOFU: accepted host key " + fp);
     return true;
 }
 

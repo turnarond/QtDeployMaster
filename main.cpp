@@ -3,6 +3,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QIcon>
+#include <libssh2/libssh2.h>
 #include "src/logging/LogBridge.h"
 #include "src/adapter/ProtocolRegistry.h"
 #include "src/adapter/FtpAdapter.h"
@@ -23,6 +24,10 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     app.setWindowIcon(QIcon(":/icons/app.ico"));  // 应用级窗口/任务栏图标
     LogBridge::install();  // Qt -> lwlog 日志桥接
+
+    // libssh2 进程级初始化（仅一次）— SshAdapter 不再各自 init/exit，
+    // 避免每实例反复拆建全局状态。进程退出由 OS 回收，无需显式 libssh2_exit()
+    libssh2_init(0);
 
     // 注册内置协议适配器
     ProtocolRegistry::instance()->registerFactory("ftp",
