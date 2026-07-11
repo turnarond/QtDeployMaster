@@ -9,12 +9,12 @@
  * Author: turnarond
  *
  * Description: OPC UA 客户端 Tool 后端实现 — 通过 OpcUaAdapter 连接 OPC UA 服务器，
- *              提供节点的读/写/浏览功能。订阅（DataChange）为 Task 6 预留桩。
+ *              提供节点的读/写/浏览/订阅功能。
  *
  * 线程模型：open62541 client 在 UA_MULTITHREADING=0 下非线程安全。
- * 当前简化方案中，readNodes/writeNodes 同步调用 adapter，
- * svc() 为简单保活循环（100ms sleep），不做 runIterate 轮询。
- * 真实订阅的 runIterate 驱动将在 Task 6 中实现。
+ * readNodes/writeNodes 由 GUI 线程同步调用 adapter；订阅建立后，svc() 线程周期性调用
+ * adapter->runIterate(100) 驱动 DataChange 回调。adapter 内部以 recursive_mutex 串行化
+ * 一切对 UA_Client 的访问，保证 GUI 线程与 svc 线程不并发触碰同一客户端。
  */
 
 #include "OpcUaClientBackend.h"
@@ -48,10 +48,14 @@ int OpcUaClientBackend::svc()
 {
     m_running = true;
     while (m_running && ServiceTask::isRunning()) {
-        // 当前简化方案：仅做保活循环，不做 UA_Client_runIterate 轮询。
-        // readNodes/writeNodes 同步调用 adapter，内部处理网络 I/O。
-        // 真实订阅的 runIterate 驱动将在 Task 6 中实现。
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        // 已订阅且已连接时，驱动 open62541 事件循环派发 DataChange 回调；
+        // runIterate(100) 单次最长阻塞 ~100ms，保持约 100ms 轮询节奏。
+        // 未订阅时退化为保活休眠（readNodes/writeNodes 为同步调用，无需轮询）。
+        if (m_subscribed.load() && m_adapter && m_adapter->isConnected()) {
+            m_adapter->runIterate(100);
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
     }
     m_running = false;
     return 0;
@@ -172,21 +176,39 @@ void OpcUaClientBackend::writeNodes(const QStringList& nodeIds, const QVariantLi
 
 void OpcUaClientBackend::subscribeNodes(const QStringList& nodeIds)
 {
-    // 订阅功能的真实实现依赖 open62541 Subscription + MonitoredItem，
-    // 需在 svc() 中驱动 UA_Client_runIterate 回调派发。
-    // 当前为一期骨架桩，将在 Task 6 中实现。
-    if (m_logCb) {
-        m_logCb("订阅功能将在后续版本(Task 6)中实现");
-        m_logCb(std::string("待订阅节点数: ") + std::to_string(nodeIds.size()));
+    if (!m_adapter->isConnected()) {
+        if (m_logCb) m_logCb("OPC UA 未连接，无法订阅节点");
+        return;
     }
-    m_subscribed = false;
+
+    // 通过适配器建立 DataChange 订阅；回调在 svc() 的 runIterate 线程触发，
+    // 经 m_dataCb 转发到 Widget（Widget 侧已用 QueuedConnection 编组到 GUI 线程）。
+    quint32 subId = m_adapter->subscribeDataChange(nodeIds,
+        [this](const QString& nodeId, const QVariant& value,
+               quint64 ts, const QString& quality) {
+            if (m_dataCb) m_dataCb(nodeId, value, ts, quality);
+        });
+
+    if (subId != 0) {
+        m_subscribed = true;   // 置位后 svc() 开始驱动 runIterate
+        if (m_logCb) {
+            m_logCb(std::string("已订阅 ") + std::to_string(nodeIds.size())
+                    + " 个节点 (subscriptionId=" + std::to_string(subId) + ")");
+        }
+    } else {
+        m_subscribed = false;
+        std::string err = m_adapter->lastError();
+        if (m_logCb) {
+            m_logCb(err.empty() ? std::string("订阅失败")
+                                : std::string("订阅失败: ") + err);
+        }
+    }
 }
 
 void OpcUaClientBackend::unsubscribeAll()
 {
-    // 订阅功能桩，将于 Task 6 实现真正的 UA_Client_deleteSubscriptions。
-    m_adapter->unsubscribe();
-    m_subscribed = false;
+    m_subscribed = false;   // 先停轮询，再删除订阅
+    m_adapter->unsubscribeAll();
     if (m_logCb) m_logCb("已取消所有订阅");
 }
 

@@ -14,8 +14,8 @@
  * 回调约定（与 ModbusBackend 一致）：
  *   - LogCallback:        操作日志 → Widget 日志面板
  *   - ConnectionCallback: 连接状态变更 → Widget 连接指示灯
- *   - DataChangeCallback: 数据变更（当前由 readNodes 模拟触发，
- *                         真正的订阅回调在 Task 6 中实现）
+ *   - DataChangeCallback: 数据变更（订阅模式下由 open62541 MonitoredItem
+ *                         回调触发，经 svc() 的 runIterate 驱动派发）
  */
 
 #pragma once
