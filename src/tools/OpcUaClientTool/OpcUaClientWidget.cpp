@@ -340,6 +340,9 @@ void OpcUaClientWidget::updateConnectionStatus(bool connected)
     } else {
         m_statusLabel->setText("○ 未连接");
         m_connectBtn->setText("连接");
+        // 断开时停止订阅轮询并复位按钮，避免对已断开的后端持续轮询
+        if (m_refreshTimer && m_refreshTimer->isActive()) m_refreshTimer->stop();
+        if (m_subscribeBtn) { m_subscribeBtn->setChecked(false); m_subscribeBtn->setText("订阅"); }
     }
 }
 
