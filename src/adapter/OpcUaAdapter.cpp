@@ -1,12 +1,14 @@
 /*
  * OpcUaAdapter.cpp — OPC UA 协议适配器实现（open62541 v1.5.5）
  *
- * 说明：open62541.h 中大量声明由 UA_ENABLE_* 编译宏门控。CMake 构建中这些宏
- * 由 open62541 目标以 PUBLIC 方式传递到本文件；VS/vcxproj 构建下本文件不经过
- * open62541_impl.cpp，故此处在包含头文件前用 #ifndef 兜底定义，保证两套构建对等。
+ * 说明：open62541 单文件分发版的功能开关由 open62541.h 顶部 #define 块直接控制，
+ * 是唯一真源（两套构建均不传 -DUA_ENABLE_*，见 src/thirdparty/open62541/CMakeLists.txt）。
+ * 下方仅保留正向开关(=1)的 #ifndef 兜底，用于头文件未定义时的保守启用；
+ * 不要为任何开关兜底 "0"——open62541 用 #ifdef/defined() 判断，定义为 0 反而会激活
+ * 对应代码路径（如 UA_ENABLE_METHODCALLS 定义为 0 会启用 Method 调用，与非目标相悖）。
  */
 
-// --- open62541 编译开关兜底（与 src/thirdparty/open62541/CMakeLists.txt 保持一致）---
+// --- open62541 正向开关兜底（仅当头文件未定义时保守启用；关闭类开关一律不兜底）---
 #ifndef UA_ENABLE_CLIENT
 #define UA_ENABLE_CLIENT 1
 #endif
@@ -15,9 +17,6 @@
 #endif
 #ifndef UA_ENABLE_NODELIST
 #define UA_ENABLE_NODELIST 1
-#endif
-#ifndef UA_ENABLE_METHODCALLS
-#define UA_ENABLE_METHODCALLS 0
 #endif
 
 #include "OpcUaAdapter.h"

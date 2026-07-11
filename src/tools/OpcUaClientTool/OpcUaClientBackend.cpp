@@ -34,7 +34,12 @@ OpcUaClientBackend::OpcUaClientBackend()
 
 OpcUaClientBackend::~OpcUaClientBackend()
 {
+    // 关键：svc() 循环体解引用派生类成员(m_adapter/m_subscribed)，而基类
+    // ~ServiceTask 才 join 线程——此时派生成员已析构，会造成 UAF。故必须在
+    // 派生析构中先停并 join svc 线程，再让成员销毁。
     m_running = false;
+    requestShutdown();  // 置基类 running_ = false，使 svc 循环退出
+    wait();             // join svc 线程(lwserverbase wait 守卫 joinable，可重入)
     if (m_adapter && m_adapter->isConnected()) {
         m_adapter->disconnect();
     }
