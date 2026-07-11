@@ -120,6 +120,7 @@ void OpcUaClientBackend::connectToServer(const QString& endpoint)
 void OpcUaClientBackend::disconnectFromServer()
 {
     if (m_logCb) m_logCb("正在断开 OPC UA 服务器连接...");
+    m_subscribed = false;  // 停止 svc 轮询泵，与 unsubscribeAll 对称
     m_adapter->disconnect();
     if (m_logCb) m_logCb("OPC UA 服务器已断开");
     if (m_connCb) m_connCb(false);
