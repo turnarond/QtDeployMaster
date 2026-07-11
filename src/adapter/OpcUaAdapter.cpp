@@ -54,6 +54,14 @@ QString uaNodeIdToQString(const UA_NodeId& id)
     return result;
 }
 
+// UA_DateTime（自 1601 起的 100ns 计数）→ unix 毫秒
+quint64 uaDateTimeToUnixMs(UA_DateTime dt)
+{
+    if (dt <= UA_DATETIME_UNIX_EPOCH)
+        return 0;
+    return static_cast<quint64>((dt - UA_DATETIME_UNIX_EPOCH) / UA_DATETIME_MSEC);
+}
+
 // UA_Variant（标量）→ QVariant，覆盖任务要求的常见类型
 QVariant uaVariantToQtVariant(const UA_Variant& val)
 {
@@ -152,6 +160,14 @@ bool qtVariantToUaVariant(const QVariant& v, UA_Variant& out)
 
 } // namespace
 
+// 单个 MonitoredItem 的回调上下文：持有用户回调 + 该监控项对应的 nodeId 字符串。
+// 由 subscribeDataChange 在堆上分配，作为 monContext 传入 open62541；
+// unsubscribeAll/disconnect 负责 delete，无泄漏。
+struct OpcUaMonContext {
+    OpcUaAdapter::DataChangeCb cb;
+    QString                    nodeId;
+};
+
 // ============================================================
 // 构造 / 析构
 // ============================================================
@@ -169,6 +185,8 @@ OpcUaAdapter::~OpcUaAdapter()
 
 bool OpcUaAdapter::connect(const DeviceInfo& device, const AuthInfo& /*auth*/)
 {
+    // 串行化对 m_client 的访问；connect 内部调用 disconnect() 亦需锁（recursive）。
+    std::lock_guard<std::recursive_mutex> lk(m_clientMutex);
     disconnect();
 
     m_client = UA_Client_new();
@@ -202,7 +220,15 @@ bool OpcUaAdapter::connect(const DeviceInfo& device, const AuthInfo& /*auth*/)
 
 void OpcUaAdapter::disconnect()
 {
+    std::lock_guard<std::recursive_mutex> lk(m_clientMutex);
     m_connected = false;
+
+    // 释放订阅簿记：UA_Client_delete 会释放客户端侧订阅，我们仅需释放堆上回调上下文。
+    m_subscriptionId = 0;
+    for (auto* ctx : m_monContexts)
+        delete ctx;
+    m_monContexts.clear();
+
     if (m_client) {
         UA_Client_disconnect(m_client);
         UA_Client_delete(m_client);
@@ -229,6 +255,9 @@ std::future<Response> OpcUaAdapter::request(const Request& req)
 {
     return std::async(std::launch::async, [this, req]() -> Response {
         Response r;
+        // 后台线程访问 m_client：在 lambda 体内加锁（而非包住 async 派发），
+        // 锁需覆盖对 m_client 的判空读取。
+        std::lock_guard<std::recursive_mutex> lk(m_clientMutex);
         if (!m_client || !m_connected) {
             r.success = false;
             r.errorMessage = "OPC UA 未连接";
@@ -276,13 +305,122 @@ void OpcUaAdapter::unsubscribe()
     m_streamCb = nullptr;
 }
 
+// ============================================================
+// DataChange 订阅（Task 6）
+// ============================================================
+
+// open62541 DataChange C 回调（文件内静态）。在 runIterate 期间同线程触发，此时
+// m_clientMutex 已被 runIterate 持有——本回调不调用适配器任何加锁方法，仅执行用户
+// std::function，该 std::function 转发到 Backend::m_dataCb（Widget 侧再经 QueuedConnection
+// 编组到 GUI 线程）。定义在 .cpp 内以便使用完整的 UA_DataValue 定义。
+static void opcuaDataChangeCallback(UA_Client* /*client*/, UA_UInt32 /*subId*/,
+                                    void* /*subContext*/, UA_UInt32 /*monId*/,
+                                    void* monContext, UA_DataValue* value)
+{
+    auto* ctx = static_cast<OpcUaMonContext*>(monContext);
+    if (!ctx || !ctx->cb || !value)
+        return;
+
+    QVariant qv;
+    if (value->hasValue)
+        qv = uaVariantToQtVariant(value->value);
+
+    quint64 ts;
+    if (value->hasSourceTimestamp)
+        ts = uaDateTimeToUnixMs(value->sourceTimestamp);
+    else if (value->hasServerTimestamp)
+        ts = uaDateTimeToUnixMs(value->serverTimestamp);
+    else
+        ts = static_cast<quint64>(QDateTime::currentMSecsSinceEpoch());
+
+    const bool good = !value->hasStatus || value->status == UA_STATUSCODE_GOOD;
+    ctx->cb(ctx->nodeId, qv, ts, good ? QStringLiteral("Good") : QStringLiteral("Bad"));
+}
+
+quint32 OpcUaAdapter::subscribeDataChange(const QStringList& nodeIds, DataChangeCb cb)
+{
+    std::lock_guard<std::recursive_mutex> lk(m_clientMutex);
+    if (!m_client || !m_connected) {
+        setError(QStringLiteral("OPC UA 未连接"));
+        return 0;
+    }
+
+    // 复用单一 Subscription：若已存在则先清理，保证 subscribe 幂等。
+    if (m_subscriptionId != 0) {
+        UA_Client_Subscriptions_deleteSingle(m_client, m_subscriptionId);
+        m_subscriptionId = 0;
+        for (auto* c : m_monContexts)
+            delete c;
+        m_monContexts.clear();
+    }
+
+    UA_CreateSubscriptionRequest subReq = UA_CreateSubscriptionRequest_default();
+    UA_CreateSubscriptionResponse subResp =
+        UA_Client_Subscriptions_create(m_client, subReq, nullptr, nullptr, nullptr);
+    if (subResp.responseHeader.serviceResult != UA_STATUSCODE_GOOD) {
+        setError(uaStatusToString(subResp.responseHeader.serviceResult));
+        return 0;
+    }
+    m_subscriptionId = subResp.subscriptionId;
+
+    for (const QString& nid : nodeIds) {
+        UA_NodeId nodeId;
+        UA_NodeId_init(&nodeId);
+        QByteArray nidUtf8 = nid.toUtf8();  // 持有生命周期，避免 UA_String 悬垂
+        UA_String nidStr = UA_STRING(const_cast<char*>(nidUtf8.constData()));
+        if (UA_NodeId_parse(&nodeId, nidStr) != UA_STATUSCODE_GOOD) {
+            UA_NodeId_clear(&nodeId);
+            continue;
+        }
+
+        // _default 中 itemToMonitor.nodeId 浅引用 nodeId；createDataChange 同步发送并内部拷贝，
+        // 返回后统一 UA_NodeId_clear(&nodeId) 释放一次。
+        UA_MonitoredItemCreateRequest monReq = UA_MonitoredItemCreateRequest_default(nodeId);
+        auto* ctx = new OpcUaMonContext{cb, nid};
+        UA_MonitoredItemCreateResult monRes =
+            UA_Client_MonitoredItems_createDataChange(
+                m_client, m_subscriptionId, UA_TIMESTAMPSTORETURN_BOTH,
+                monReq, ctx, &opcuaDataChangeCallback, nullptr);
+        if (monRes.statusCode == UA_STATUSCODE_GOOD) {
+            m_monContexts.push_back(ctx);
+        } else {
+            delete ctx;   // 创建失败：立即回收上下文，避免泄漏
+        }
+        UA_MonitoredItemCreateResult_clear(&monRes);
+        UA_NodeId_clear(&nodeId);
+    }
+
+    m_lastError.clear();
+    return m_subscriptionId;
+}
+
+void OpcUaAdapter::unsubscribeAll()
+{
+    std::lock_guard<std::recursive_mutex> lk(m_clientMutex);
+    if (m_client && m_subscriptionId != 0)
+        UA_Client_Subscriptions_deleteSingle(m_client, m_subscriptionId);
+    m_subscriptionId = 0;
+    for (auto* ctx : m_monContexts)
+        delete ctx;
+    m_monContexts.clear();
+}
+
+void OpcUaAdapter::runIterate(int timeoutMs)
+{
+    std::lock_guard<std::recursive_mutex> lk(m_clientMutex);
+    if (!m_client || !m_connected)
+        return;
+    // 单次最长阻塞 timeoutMs（建议 100ms），返回及时，故持锁期间不会长时间独占。
+    UA_Client_run_iterate(m_client, static_cast<UA_UInt32>(timeoutMs < 0 ? 0 : timeoutMs));
+}
+
 ProtocolCapability OpcUaAdapter::capability() const
 {
     ProtocolCapability c;
     c.requestResponse  = true;
-    c.streaming        = false;   // 订阅（流）暂未实现
+    c.streaming        = true;   // DataChange 订阅（Task 6）已实现
     c.broadcast        = false;
-    c.publishSubscribe = false;   // UA_ENABLE_SUBSCRIPTIONS 可用，待后续接入
+    c.publishSubscribe = true;   // UA_ENABLE_SUBSCRIPTIONS 已接入
     c.maxConnections   = 1;
     return c;
 }
@@ -294,6 +432,7 @@ ProtocolCapability OpcUaAdapter::capability() const
 QVariantMap OpcUaAdapter::readNodes(const QStringList& nodeIds)
 {
     QVariantMap results;
+    std::lock_guard<std::recursive_mutex> lk(m_clientMutex);
     if (!m_client || !m_connected) {
         setError(QStringLiteral("OPC UA 未连接"));
         return results;
@@ -328,6 +467,7 @@ QMap<QString, QString> OpcUaAdapter::writeNodes(const QStringList& nodeIds,
                                                 const QVariantList& values)
 {
     QMap<QString, QString> results;
+    std::lock_guard<std::recursive_mutex> lk(m_clientMutex);
     if (!m_client || !m_connected) {
         setError(QStringLiteral("OPC UA 未连接"));
         return results;
@@ -368,6 +508,7 @@ QMap<QString, QString> OpcUaAdapter::writeNodes(const QStringList& nodeIds,
 
 QString OpcUaAdapter::browseRoot()
 {
+    std::lock_guard<std::recursive_mutex> lk(m_clientMutex);
     if (!m_client || !m_connected) {
         setError(QStringLiteral("OPC UA 未连接"));
         return QStringLiteral("[]");
