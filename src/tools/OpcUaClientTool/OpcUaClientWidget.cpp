@@ -272,7 +272,25 @@ void OpcUaClientWidget::onWriteClicked()
         appendLog("请填写要写入的 NodeId");
         return;
     }
-    m_backend->writeNodes(QStringList{nodeId}, QVariantList{m_valueEdit->text()});
+    // 值类型推断：UI 只能输入文本，但 OPC UA 节点多为数值/布尔类型。
+    // 按 bool → 整型 → 浮点 → 字符串的顺序解析，使写数值节点不再因类型不符被拒。
+    // （纯数字的字符串节点属少数场景，首期不支持强制字符串；后续可加 UI 类型选择器。）
+    const QString text = m_valueEdit->text().trimmed();
+    const QString low = text.toLower();
+    QVariant value;
+    bool okI = false, okD = false;
+    const qlonglong asInt = text.toLongLong(&okI);
+    const double asDouble = text.toDouble(&okD);
+    if (low == "true" || low == "false") {
+        value = (low == "true");
+    } else if (okI) {
+        value = asInt;
+    } else if (okD) {
+        value = asDouble;
+    } else {
+        value = m_valueEdit->text();  // 回退为字符串（保留原始未 trim 文本）
+    }
+    m_backend->writeNodes(QStringList{nodeId}, QVariantList{value});
 }
 
 void OpcUaClientWidget::onSubscribeClicked()
