@@ -130,8 +130,8 @@
   <!-- 新架构源文件（src/）                                            -->
   <!-- ============================================================ -->
   <ItemGroup>
-    <!-- open62541 -->
-    <ClCompile Include="src/thirdparty/open62541/open62541_impl.cpp" />
+    <!-- open62541（单文件分发版，作为 C 编译——与 CMake/nanopb 一致；勿用 .cpp 包装，否则 /permissive- 下字符串字面量 const 化会破坏 UA_STRING(char*)） -->
+    <ClCompile Include="src\thirdparty\open62541\open62541.c" />
     <!-- 日志桥接 -->
     <ClCompile Include="src\logging\LogBridge.cpp" />
     <!-- 协议适配器 -->
