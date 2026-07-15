@@ -64,6 +64,12 @@
     <ClCompile Include="src\adapter\ProtocolRegistry.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\updater\UpdateChecker.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\updater\UpdateDialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\framework\AppState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
