@@ -25,3 +25,38 @@ if(_qt_core_dll)
     set_tests_properties(tst_nrec PROPERTIES
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:${_qt_bin_dir}")
 endif()
+
+# ============================================================
+# 在线更新 — UpdateChecker 单元测试（Task 7 占位）
+# ============================================================
+find_library(_CURL_FOR_TEST_LIB
+    NAMES libcurl_imp libcurl_imp.lib
+    PATHS ${CMAKE_SOURCE_DIR}/lib
+    NO_DEFAULT_PATH
+)
+if(_CURL_FOR_TEST_LIB AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tst_updatechecker.cpp")
+    add_executable(tst_updatechecker
+        tst_updatechecker.cpp
+        ${CMAKE_SOURCE_DIR}/src/updater/UpdateChecker.cpp
+    )
+    target_include_directories(tst_updatechecker PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_link_libraries(tst_updatechecker PRIVATE
+        Qt6::Core Qt6::Network Qt6::Test
+        lwserverbase lwlog lwcomm lwevent
+        ${_CURL_FOR_TEST_LIB}
+    )
+    target_compile_definitions(tst_updatechecker PRIVATE
+        DEVICEFORGE_VERSION_MAJOR=2
+        DEVICEFORGE_VERSION_MINOR=1
+        DEVICEFORGE_VERSION_PATCH=0
+    )
+    add_test(NAME tst_updatechecker COMMAND tst_updatechecker)
+
+    # PATH 注入(避免 0xc0000135 DLL_NOT_FOUND)
+    if(_qt_core_dll)
+        set_tests_properties(tst_updatechecker PROPERTIES
+            ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:${_qt_bin_dir}")
+    endif()
+endif()
