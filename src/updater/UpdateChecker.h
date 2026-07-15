@@ -15,7 +15,7 @@
 #include <string>
 #include <atomic>
 #include <mutex>
-#include <QtConcurrent>
+#include <QtConcurrent/QtConcurrent>
 
 // UpdateChecker — 设备在线更新 ServiceTask
 // 状态机: idle → checking → ready / error
