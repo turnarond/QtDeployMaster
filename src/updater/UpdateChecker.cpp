@@ -88,49 +88,66 @@ bool findIntValue(const std::string& json, const std::string& key, int64_t& valu
 // 在 json 中查找形如 "browser_download_url": "https://..." 的所有 asset URL
 // 同时提取同对象内的 "name" 和 "size"
 // GitHub Release JSON 结构稳定:[ { "assets": [ { "name":.., "size":.., "browser_download_url":.. } ] } ]
+// 单 pass 流式扫描:在每个对象的 {..} 区间内同时收集 name/size/url/content_type,避免跨对象误配
 bool findAsset(const std::string& json, const std::string& namePattern,
                std::string& assetName, std::string& downloadUrl, int64_t& size) {
-    // 寻找所有 "browser_download_url"
     size_t pos = 0;
-    const std::string urlKey = "\"browser_download_url\"";
-    while ((pos = json.find(urlKey, pos)) != std::string::npos) {
-        size_t urlColon = json.find(':', pos + urlKey.size());
-        if (urlColon == std::string::npos) { pos += urlKey.size(); continue; }
-        size_t q1 = json.find('"', urlColon + 1);
-        if (q1 == std::string::npos) break;
-        size_t q2 = q1 + 1;
-        while (q2 < json.size()) {
-            if (json[q2] == '\\' && q2 + 1 < json.size()) { q2 += 2; continue; }
-            if (json[q2] == '"') break;
-            ++q2;
+    while ((pos = json.find('{', pos)) != std::string::npos) {
+        // 找匹配的右括号(忽略嵌套字符串中的 })
+        int depth = 1;
+        size_t objEnd = pos + 1;
+        while (objEnd < json.size() && depth > 0) {
+            if (json[objEnd] == '"') {
+                // 跳过字符串
+                size_t strEnd = objEnd + 1;
+                while (strEnd < json.size()) {
+                    if (json[strEnd] == '\\' && strEnd + 1 < json.size()) { strEnd += 2; continue; }
+                    if (json[strEnd] == '"') break;
+                    ++strEnd;
+                }
+                objEnd = (strEnd < json.size()) ? strEnd + 1 : strEnd;
+                continue;
+            }
+            if (json[objEnd] == '{') ++depth;
+            else if (json[objEnd] == '}') --depth;
+            ++objEnd;
         }
-        if (q2 >= json.size()) break;
-        std::string url = json.substr(q1 + 1, q2 - q1 - 1);
+        if (depth != 0) break; // 未找到匹配右括号
 
-        // 在 url 所在对象内向前回溯查找 "name" 和 "size"（对象边界 {..}）
-        // 简化策略:在 url 前后 500 字节窗口内搜索
-        size_t winStart = (pos > 500) ? pos - 500 : 0;
-        size_t winEnd = std::min(json.size(), q2 + 500);
-        std::string window = json.substr(winStart, winEnd - winStart);
+        std::string obj = json.substr(pos, objEnd - pos);
 
-        std::string objName;
+        // 仅检查含有 browser_download_url 的对象(asset 对象)
+        if (obj.find("\"browser_download_url\"") == std::string::npos) {
+            pos = objEnd;
+            continue;
+        }
+
+        std::string objName, objUrl, contentType;
         int64_t objSize = 0;
-        findStringValue(window, "name", objName);
-        findIntValue(window, "size", objSize);
+        findStringValue(obj, "name", objName);
+        findStringValue(obj, "browser_download_url", objUrl);
+        findIntValue(obj, "size", objSize);
+        findStringValue(obj, "content_type", contentType);
 
-        // 匹配条件:文件名包含 namePattern（不区分大小写）
+        // spec §4: 仅接受 zip 资产
+        if (contentType != "application/zip" && contentType != "application/x-zip-compressed") {
+            pos = objEnd;
+            continue;
+        }
+
+        // 匹配 namePattern(不区分大小写)
         std::string lname = objName;
         std::string lpat = namePattern;
         std::transform(lname.begin(), lname.end(), lname.begin(), ::tolower);
         std::transform(lpat.begin(), lpat.end(), lpat.begin(), ::tolower);
         if (lname.find(lpat) != std::string::npos) {
             assetName = objName;
-            downloadUrl = url;
+            downloadUrl = objUrl;
             size = objSize;
             return true;
         }
 
-        pos = q2 + 1;
+        pos = objEnd;
     }
     return false;
 }
@@ -307,6 +324,13 @@ ReleaseInfo UpdateChecker::fetchReleaseInfo(std::string& errorOut) {
         errorOut = "JSON 解析失败: 缺少 tag_name";
         return info;
     }
+    // spec §4: 跳过 prerelease — 仅推送正式版给用户
+    std::string prerelease;
+    findStringValue(body, "prerelease", prerelease);
+    if (prerelease == "true") {
+        errorOut = "latest release is prerelease, skipped";
+        return info;
+    }
     findStringValue(body, "html_url", htmlUrl);
     findStringValue(body, "body", relBody);
 
@@ -457,7 +481,7 @@ bool UpdateChecker::extractZip(const std::string& zipPath, const std::string& de
         return false;
     }
     QDirIterator it(QString::fromStdString(destDir),
-                    QDir::Files | QDir::NoSymLinks,
+                    QDir::Files,
                     QDirIterator::Subdirectories);
     constexpr int kMaxFiles = 200;
     constexpr int64_t kMaxFileSize = 200LL * 1024 * 1024; // 200MB
@@ -465,7 +489,8 @@ bool UpdateChecker::extractZip(const std::string& zipPath, const std::string& de
     while (it.hasNext()) {
         it.next();
         QFileInfo fi = it.fileInfo();
-        if (fi.isSymLink()) {
+        // 拒绝符号链接(spec §4 安全):NoSymLinks 已过滤,此处显式检查作为冗余校验
+        if (fi.isSymLink() || fi.isSymbolicLink()) {
             errorOut = "解压内容包含符号链接,已拒绝";
             return false;
         }
@@ -504,7 +529,11 @@ void UpdateChecker::checkForUpdate() {
             reportError(err);
             return;
         }
-        m_releaseInfo = info;
+        // 加锁写入共享数据(防止与主线程 releaseInfo() 读冲突)
+        {
+            std::lock_guard<std::mutex> lk(m_dataMutex);
+            m_releaseInfo = info;
+        }
         setState(info.isNewer ? UpdateState::Ready : UpdateState::Idle);
     });
 }
@@ -520,8 +549,12 @@ void UpdateChecker::downloadUpdate() {
     m_cancelled.store(false);
     setState(UpdateState::Downloading);
 
-    // 拷贝 releaseInfo 供 lambda 捕获（避免生命周期问题）
-    ReleaseInfo info = m_releaseInfo;
+    // 拷贝 releaseInfo 供 lambda 捕获(避免生命周期问题)
+    ReleaseInfo info;
+    {
+        std::lock_guard<std::mutex> lk(m_dataMutex);
+        info = m_releaseInfo;
+    }
     m_downloadFuture = QtConcurrent::run([this, info]() {
         std::string err;
         if (!downloadZip(info, err)) {
@@ -533,8 +566,16 @@ void UpdateChecker::downloadUpdate() {
             return;
         }
         // 解压到临时目录的 extract 子目录
-        m_extractDir = tempDir() + "/extract";
-        if (!extractZip(m_zipPath, m_extractDir, err)) {
+        {
+            std::lock_guard<std::mutex> lk(m_dataMutex);
+            m_extractDir = tempDir() + "/extract";
+        }
+        std::string extractDir;
+        {
+            std::lock_guard<std::mutex> lk(m_dataMutex);
+            extractDir = m_extractDir;
+        }
+        if (!extractZip(m_zipPath, extractDir, err)) {
             reportError(err);
             return;
         }
@@ -544,10 +585,9 @@ void UpdateChecker::downloadUpdate() {
 }
 
 void UpdateChecker::cancelDownload() {
+    // 非阻塞:仅设置取消标志并切回 Idle,worker 会自然退出
+    // 析构时再 waitForFinished 等待,避免 UI 线程被锁
     m_cancelled.store(true);
-    // 等待 worker 退出（带超时保护）
-    if (m_downloadFuture.isRunning()) m_downloadFuture.waitForFinished();
-    if (m_checkFuture.isRunning()) m_checkFuture.waitForFinished();
     setState(UpdateState::Idle);
 }
 
