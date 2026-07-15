@@ -14,6 +14,7 @@
 #include <functional>
 #include <string>
 #include <atomic>
+#include <mutex>
 #include <QtConcurrent>
 
 // UpdateChecker — 设备在线更新 ServiceTask
@@ -40,7 +41,11 @@ public:
     void installUpdate();
 
     UpdateState state() const { return m_state.load(); }
-    const ReleaseInfo& releaseInfo() const { return m_releaseInfo; }
+    // releaseInfo() 返回副本(线程安全)而非引用
+    ReleaseInfo releaseInfo() const {
+        std::lock_guard<std::mutex> lk(m_dataMutex);
+        return m_releaseInfo;
+    }
 
     void setStateChangedCallback(std::function<void(UpdateState)> cb);
     void setProgressCallback(std::function<void(int, int64_t, int64_t)> cb);
@@ -75,10 +80,12 @@ private:
 
     // 状态
     std::atomic<UpdateState> m_state{UpdateState::Idle};
-    ReleaseInfo m_releaseInfo;
+    // 保护 worker↔主线程共享数据(m_releaseInfo/m_zipPath/m_extractDir)
+    mutable std::mutex m_dataMutex;
+    ReleaseInfo m_releaseInfo;        // GUARDED_BY(m_dataMutex)
     std::atomic<bool> m_cancelled{false};
-    std::string m_zipPath;
-    std::string m_extractDir;
+    std::string m_zipPath;            // GUARDED_BY(m_dataMutex)
+    std::string m_extractDir;         // GUARDED_BY(m_dataMutex)
     std::string m_currentVersion{"2.1.0"};
     std::string m_repo{"DeviceForge/DeviceForge"};
 
