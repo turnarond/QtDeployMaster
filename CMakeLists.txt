@@ -12,6 +12,12 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# 全局编译选项：MSVC 使用 UTF-8 源代码/执行字符集，
+# 允许源码中包含中文字符串字面量和注释(否则 GBK 代码页下会 C4819 警告 + 编译失败)
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
 # 查找 Qt6 包（按需添加模块）
 find_package(Qt6 REQUIRED COMPONENTS
     Core
@@ -20,6 +26,7 @@ find_package(Qt6 REQUIRED COMPONENTS
     Network
     SerialBus
     WebSockets
+    Concurrent
 )
 
 set(LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
@@ -152,6 +159,10 @@ set(SOURCES
     # 新Presenter文件
     # src/presenter/FtpPresenter.cpp — 临时禁用: QPointer<FtpManager> 类型错误（待重构）
     # src/presenter/ModbusPresenter.cpp — 临时禁用: 桩代码依赖未就绪（待 Task 13）
+
+    # 在线更新模块
+    src/updater/UpdateChecker.cpp
+    src/updater/UpdateDialog.cpp
 )
 
 include_directories(
@@ -171,6 +182,7 @@ target_link_libraries(DeviceForge PRIVATE
     Qt6::Network
     Qt6::SerialBus
     Qt6::WebSockets
+    Qt6::Concurrent
     lwlog
     lwcomm
     lwcommunicate
@@ -178,6 +190,31 @@ target_link_libraries(DeviceForge PRIVATE
     tinyxml2
     ${LIBCURL_IMPL_LIB}
     ${LIBSSH2_LIB}
+)
+
+# ============================================================
+# 在线更新模块 — 版本宏定义
+# ============================================================
+target_compile_definitions(DeviceForge PRIVATE
+    DEVICEFORGE_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+    DEVICEFORGE_VERSION_MINOR=${PROJECT_VERSION_MINOR}
+    DEVICEFORGE_VERSION_PATCH=${PROJECT_VERSION_PATCH}
+)
+
+# ============================================================
+# Updater.exe — 独立 Win32 文件替换进程（不链接 Qt）
+# ============================================================
+add_executable(Updater
+    src/updater/UpdaterMain.cpp
+)
+set_target_properties(Updater PROPERTIES WIN32_EXECUTABLE ON)
+
+# Updater.exe 输出到 DeviceForge 输出目录(便于部署包打包)
+add_custom_command(TARGET DeviceForge POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "$<TARGET_FILE:Updater>"
+        "$<TARGET_FILE_DIR:DeviceForge>"
+    COMMENT "Copying Updater.exe to DeviceForge output directory"
 )
 
 # 构建后复制 libcurl-x64.dll 为 libcurl.dll 到输出目录（运行时依赖）

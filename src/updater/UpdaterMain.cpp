@@ -83,9 +83,10 @@ void log(const char* fmt, ...) {
 // 等待进程退出
 bool waitForProcessExit(const char* exeName, DWORD timeoutMs) {
     log("等待 %s 退出...\n", exeName);
-    // 转为宽字符用于与 PROCESSENTRY32::szExeFile (WCHAR) 比较
-    WCHAR targetName[MAX_PATH];
-    MultiByteToWideChar(CP_UTF8, 0, exeName, -1, targetName, MAX_PATH);
+    // 与 PROCESSENTRY32(非 W 版本)比较,szExeFile 为 CHAR[]，用 ANSI 严格比较
+    CHAR targetName[MAX_PATH];
+    strncpy_s(targetName, exeName, MAX_PATH - 1);
+    targetName[MAX_PATH - 1] = '\0';
 
     DWORD elapsed = 0;
     const DWORD interval = 500;
@@ -98,7 +99,7 @@ bool waitForProcessExit(const char* exeName, DWORD timeoutMs) {
         bool found = false;
         if (Process32First(snapshot, &pe)) {
             do {
-                if (_wcsicmp(pe.szExeFile, targetName) == 0) {
+                if (_stricmp(pe.szExeFile, targetName) == 0) {
                     found = true;
                     break;
                 }
