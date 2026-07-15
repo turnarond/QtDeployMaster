@@ -660,16 +660,17 @@ void DeployMaster::setupUpdateChecker()
             if (m_updateDialog) {
                 m_updateDialog->setState(UpdateState::Error);
             }
-            // 状态栏仅显示"检查失败",不暴露错误详情（避免 UI 抖动）
-            QString ver = m_versionLabel->text().split(' ').first();
-            if (ver.isEmpty()) ver = currentVersionString();
-            m_versionLabel->setText(ver + " (检查失败)");
-            m_versionLabel->setStyleSheet("color: #7B8494; padding: 0 8px;");
+            // 自动检查失败静默（spec §7: 不弹窗、不改变状态栏）
+            // 手动检查失败才显示 "检查失败"
+            if (!m_autoCheck) {
+                m_versionLabel->setText(currentVersionString() + " (检查失败)");
+                m_versionLabel->setStyleSheet("color: #7B8494; padding: 0 8px;");
+            }
         }, Qt::QueuedConnection);
     });
 
     // 5 秒后自动触发一次后台检查,避免启动阻塞
-    QTimer::singleShot(5000, this, &DeployMaster::onCheckUpdateTriggered);
+    QTimer::singleShot(5000, this, [this]() { m_autoCheck = true; onCheckUpdateTriggered(); });
 }
 
 // 用户点击菜单"检查更新"或 5 秒自动触发
@@ -678,6 +679,7 @@ void DeployMaster::onCheckUpdateTriggered()
     if (!m_updateChecker) return;
     m_checkUpdateAction->setEnabled(false);
     m_updateChecker->checkForUpdate();
+    // autoCheck 标志由调用方（timer=auto / menu=manual）在调用前设置
 }
 
 // 状态机回调（主线程）— 切换状态栏标签 + 自动弹出 UpdateDialog
@@ -727,9 +729,13 @@ void DeployMaster::onUpdateStateChanged(UpdateState state)
         break;
 
     case UpdateState::Error:
-        m_versionLabel->setText(ver + " (检查失败)");
-        m_versionLabel->setStyleSheet("color: #7B8494; padding: 0 8px;");
+        // 自动检查失败静默,手动检查失败显示 "检查失败"
+        if (!m_autoCheck) {
+            m_versionLabel->setText(ver + " (检查失败)");
+            m_versionLabel->setStyleSheet("color: #7B8494; padding: 0 8px;");
+        }
         m_checkUpdateAction->setText("检查更新...");
+        m_autoCheck = false;  // 重置标志
         break;
 
     case UpdateState::Downloading:
