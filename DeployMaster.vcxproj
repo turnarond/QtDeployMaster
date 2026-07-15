@@ -213,6 +213,7 @@
     <QtMoc Include="src\tools\TelnetTool\TelnetWidget.h" />
     <QtMoc Include="src\tools\WebSocketTool\WebSocketWidget.h" />
     <QtMoc Include="src\tools\NetRelayTool\NetRelayWidget.h" />
+    <QtMoc Include="src\updater\UpdateDialog.h" />
     <!-- 旧 Presenter 头文件（.cpp 未编译，去掉 QtMoc 避免未解析符号） -->
   </ItemGroup>
   <!-- ============================================================ -->
