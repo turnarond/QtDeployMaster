@@ -16,21 +16,21 @@
 enum class UpdateState {
     Idle,
     Checking,
-    Ready,        // new version available
+    Ready,        // 有新版本可用
     Downloading,
-    Installed,    // download + verification complete, ready to install
-    Error         // silent error (network/parse failure)
+    Installed,    // 下载+校验完成，等待安装
+    Error         // 静默错误（网络/解析失败）
 };
 
 // GitHub Release 解析结果
 struct ReleaseInfo {
     std::string tagName;        // "v2.2.0"
-    std::string htmlUrl;        // release page URL
+    std::string htmlUrl;        // release 页面 URL
     std::string body;           // release notes (markdown)
     std::string assetName;      // "DeviceForge-v2.2.0-win64.zip"
     std::string downloadUrl;    // browser_download_url
-    int64_t     assetSize = 0;  // bytes
-    bool        isNewer = false; // tag > current?
+    int64_t     assetSize = 0;  // 字节数
+    bool        isNewer = false; // tag > 当前版本?
 };
 
 // 语义化版本号
