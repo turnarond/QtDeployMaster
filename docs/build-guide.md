@@ -5,7 +5,7 @@
 | 依赖 | 版本 | 说明 |
 |------|------|------|
 | Visual Studio 2022 | v17.x | MSVC v143 工具集 |
-| Qt | 6.10.1 | msvc2022_64 版本 |
+| Qt | 6.11.1 | msvc2022_64 版本 |
 | CMake | 3.16+ | VS2022 自带或 [下载](https://cmake.org/download/) |
 
 ## 快速开始
@@ -17,7 +17,7 @@ build.bat
 ```
 
 脚本会自动完成：
-1. ✅ 检查 Qt 6.10.1 安装路径
+1. ✅ 检查 Qt 6.11.1 安装路径
 2. ✅ 运行 CMake 配置（生成 VS2022 工程）
 3. ✅ 编译 Release 版本
 4. ✅ 显示运行路径
@@ -28,7 +28,7 @@ build.bat
 # 1. 配置（生成 VS2022 工程）
 mkdir build
 cd build
-cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="C:\Qt\6.10.1\msvc2022_64"
+cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="C:\Qt\6.11.1\msvc2022_64"
 
 # 2. 编译 Release
 cmake --build . --config Release
@@ -51,12 +51,13 @@ start DeployMaster.sln
 
 **CMake 命令**：
 ```bash
-cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="D:\Qt\6.10.1\msvc2022_64"
+cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="D:\Qt\6.11.1\msvc2022_64"
+```
 ```
 
 **build.bat**：编辑脚本中的 `QT_PREFIX` 变量：
 ```batch
-set QT_PREFIX=D:\Qt\6.10.1\msvc2022_64
+set QT_PREFIX=D:\Qt\6.11.1\msvc2022_64
 ```
 
 ## 构建输出
@@ -74,11 +75,11 @@ set QT_PREFIX=D:\Qt\6.10.1\msvc2022_64
 
 **错误**：
 ```
-[ERROR] Qt 6.10.1 not found at: C:\Qt\6.10.1\msvc2022_64
+[ERROR] Qt 6.11.1 not found at: C:\Qt\6.11.1\msvc2022_64
 ```
 
 **解决**：
-1. 确认 `C:\Qt\6.10.1\msvc2022_64\bin\qmake.exe` 存在
+1. 确认 `C:\Qt\6.11.1\msvc2022_64\bin\qmake.exe` 存在
 2. 或修改 `CMAKE_PREFIX_PATH` 指向你的 Qt 安装路径
 
 ### libcurl DLL 未找到

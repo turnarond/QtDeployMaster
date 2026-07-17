@@ -78,7 +78,7 @@ target_link_options(DeviceForge PRIVATE
 
 **症状**：
 ```
-CMAKE_PREFIX_PATH 指向 Qt 6.10.1，但系统实际安装 Qt 6.11.1
+CMAKE_PREFIX_PATH 指向 Qt 6.11.1，但系统实际安装 Qt 6.11.1
 ```
 
 **解决**：修改 `build.bat` 中的 `QT_PREFIX`：

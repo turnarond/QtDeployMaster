@@ -176,10 +176,14 @@ set_target_properties(DeviceForge PROPERTIES
 
 # 确保所有配置都生成调试信息
 target_compile_options(DeviceForge PRIVATE
+    $<$<CONFIG:Debug>:/Zi>
     $<$<CONFIG:RelWithDebInfo>:/Zi>
+    $<$<CONFIG:MinSizeRel>:/Zi>
 )
 target_link_options(DeviceForge PRIVATE
+    $<$<CONFIG:Debug>:/DEBUG>
     $<$<CONFIG:RelWithDebInfo>:/DEBUG>
+    $<$<CONFIG:MinSizeRel>:/DEBUG>
 )
 
 # --- open62541 (LGPL/MPL, 单文件分发版 v1.5.5) ---

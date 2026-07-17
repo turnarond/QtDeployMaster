@@ -3,7 +3,7 @@ REM ============================================================
 REM  DeviceForge Build Script
 REM  Purpose: One-click generate Visual Studio 2022 project
 REM  Prerequisites:
-REM    - Qt 6.10.1 installed (default: C:\Qt\6.10.1\msvc2022_64)
+REM    - Qt 6.11.1 installed (default: C:\Qt\6.11.1\msvc2022_64)
 REM    - Visual Studio 2022 (v143 toolset) installed
 REM ============================================================
 
