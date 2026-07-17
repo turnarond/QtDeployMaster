@@ -74,11 +74,11 @@ set QT_PREFIX=D:\Qt\6.10.1\msvc2022_64
 
 **错误**：
 ```
-CMake Error: Could not find Qt6
+[ERROR] Qt 6.10.1 not found at: C:\Qt\6.10.1\msvc2022_64
 ```
 
 **解决**：
-1. 确认 `C:\Qt\6.10.1\msvc2022_64\lib\cmake\Qt6` 目录存在
+1. 确认 `C:\Qt\6.10.1\msvc2022_64\bin\qmake.exe` 存在
 2. 或修改 `CMAKE_PREFIX_PATH` 指向你的 Qt 安装路径
 
 ### libcurl DLL 未找到
