@@ -47,16 +47,6 @@ ctest -C Release -R tst_nrec --output-on-failure
 
 > CTest 已通过 `ENVIRONMENT_MODIFICATION` 把 Qt bin 目录注入 PATH，避免 Windows 上 `0xc0000135`（DLL_NOT_FOUND）。直接运行 `tst_nrec.exe` 时若报缺 DLL，需手动把 `C:\Qt\6.10.1\msvc2022_64\bin` 加入 PATH。
 
-> **注意**：CMake `project()` 名与可执行目标均为 `DeviceForge`（见 `CMakeLists.txt`，`project(DeviceForge VERSION 2.1.0)` + `add_executable(DeviceForge ...)`），因此 CMake 产物是 `DeviceForge.exe`。而 VS/vcxproj 工程仍名为 `DeployMaster`，产物是 `DeployMaster.exe`。两套构建系统输出的 exe 名不同，勿混淆。
-
-### Visual Studio
-
-项目根目录有 `DeployMaster.vcxproj` 与 `DeployMaster.sln`，可直接用 VS2022 打开。需安装 Qt 6.10.1、Qt Visual Studio Tools 扩展，并在 VS 中配置 Qt 版本路径。
-
-### Visual Studio 调试
-
-VS 中 F5 调试时，如果 libcurl-x64.dll 未在输出目录（如 `x64/Debug/`），需手动复制 `lib/libcurl-x64.dll` 过去。CMake 构建已通过 `POST_BUILD` 自动处理此步骤。
-
 ## CI/CD
 
 GitHub Actions（`.github/workflows/msbuild.yml`）：push/PR 到 `main` 分支时触发，在 `windows-latest` 上通过 `jurplel/install-qt-action@v4` 安装 Qt 6.9.2，使用 MSBuild 编译 Debug 配置。

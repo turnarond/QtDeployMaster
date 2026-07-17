@@ -367,3 +367,4 @@ build/
 build_release/
 dist/
 *.zip
+DeployMaster.vcxproj.bak
