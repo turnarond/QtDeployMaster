@@ -6,7 +6,7 @@
 
 **Architecture:** 在现有 `NetRelayBackend`(中继引擎) 旁新增两个内聚、可独立测试的单元：`RelayRecorder`(顺序写 `.nrec`) 与 `RelayPlayer`(读 `.nrec` + QTimer 按时序重放)。共享的枚举/记录结构抽到 `NetRelayTypes.h`。Backend 用 `RelayMode{Idle,Relaying,Replaying}` 状态机保证中继与回放互斥；录制在中继数据发射点顺带落盘；回放由 Backend 持有 Player 并转发回调。UI 增加录制勾选与回放面板。
 
-**Tech Stack:** C++17、Qt 6.10.1 (Core/Network/Widgets/Test)、CMake、QDataStream(LittleEndian) 做二进制序列化。
+**Tech Stack:** C++17、Qt 6.11.1 (Core/Network/Widgets/Test)、CMake、QDataStream(LittleEndian) 做二进制序列化。
 
 ## Global Constraints
 
@@ -170,7 +170,7 @@ add_subdirectory(tests)
 
 Run:
 ```bash
-cd build && cmake .. -DCMAKE_PREFIX_PATH="C:/Qt/6.10.1/msvc2022_64" && cmake --build . --config Release --target tst_nrec && ctest -C Release -R tst_nrec --output-on-failure
+cd build && cmake .. -DCMAKE_PREFIX_PATH="C:/Qt/6.11.1/msvc2022_64" && cmake --build . --config Release --target tst_nrec && ctest -C Release -R tst_nrec --output-on-failure
 ```
 Expected: `tst_nrec` 编译并 `1 test passed`（sanity）。
 

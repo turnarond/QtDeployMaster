@@ -6,7 +6,7 @@
 
 **Architecture:** lwserverbase 服务核 + Qt Widget 壳双层架构。Tool = ToolBackend (ServiceTask) + ToolWidget (QWidget)，通过 lwmsgq 双向解耦。统一 IProtocolAdapter 接口 + LWConnPool 连接池。
 
-**Tech Stack:** Qt 6.10.1 (Core/Gui/Widgets/Network)、C++17、lwserverbase、lwcommunicate、lwlog、lwmsgq、tinyxml2、nanopb、libcurl
+**Tech Stack:** Qt 6.11.1 (Core/Gui/Widgets/Network)、C++17、lwserverbase、lwcommunicate、lwlog、lwmsgq、tinyxml2、nanopb、libcurl
 
 **Design Doc:** `docs/superpowers/specs/2026-07-04-tool-framework-design.md`
 
@@ -177,7 +177,7 @@ target_link_libraries(lwserverbase PUBLIC lwcomm lwlog lwmsgq lwevent)
 
 ```bash
 mkdir build && cd build
-cmake .. -DCMAKE_PREFIX_PATH="C:\Qt\6.10.1\msvc2022_64"
+cmake .. -DCMAKE_PREFIX_PATH="C:\Qt\6.11.1\msvc2022_64"
 cmake --build . --config Release
 ```
 
@@ -2801,7 +2801,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 ```bash
 rm -rf build && mkdir build && cd build
-cmake .. -DCMAKE_PREFIX_PATH="C:\Qt\6.10.1\msvc2022_64"
+cmake .. -DCMAKE_PREFIX_PATH="C:\Qt\6.11.1\msvc2022_64"
 cmake --build . --config Release 2>&1 | tee build.log
 ```
 

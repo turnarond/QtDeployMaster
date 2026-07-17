@@ -11,7 +11,7 @@
 
 ## 开发环境
 
-- Qt 6.10.1 (MSVC 2022 64-bit)
+- Qt 6.11.1 (MSVC 2022 64-bit)
 - Visual Studio 2022
 - CMake 3.16+
 
@@ -35,7 +35,7 @@
 
 ## 提交流程
 
-1. 确保代码在 Windows + Qt 6.10.1 上编译通过
+1. 确保代码在 Windows + Qt 6.11.1 上编译通过
 2. 提交 PR 并填写 PR 模板
 3. 维护者会在一周内 review
 

@@ -6,7 +6,7 @@
 
 **Architecture:** 新建 SshAdapter（IProtocolAdapter 子类，内部 libssh2 session+channel）；TelnetBackend 协议感知化（用成员变量替换硬编码的 `"telnet"` 字符串）；TelnetWidget 加协议下拉；libssh2 以预编译 lib 方式集成（与 libcurl 一致）。
 
-**Tech Stack:** C++17、Qt 6.10.1、libssh2（BSD 3-Clause）、QTCPSocket（libssh2 走自定义 socket 回调或原生 socket 桥接）。
+**Tech Stack:** C++17、Qt 6.11.1、libssh2（BSD 3-Clause）、QTCPSocket（libssh2 走自定义 socket 回调或原生 socket 桥接）。
 
 ## Global Constraints
 
@@ -94,7 +94,7 @@ Run: `ls -la /d/persional/QtDeployMaster/lib/libssh2.* 2>/dev/null && echo "lib 
 
 若库已就位:
 ```bash
-cd /d/persional/QtDeployMaster/build && cmake .. -DCMAKE_PREFIX_PATH="C:/Qt/6.10.1/msvc2022_64" >/tmp/cfg.log 2>&1 && cmake --build . --config Release 2>&1 | tail -3
+cd /d/persional/QtDeployMaster/build && cmake .. -DCMAKE_PREFIX_PATH="C:/Qt/6.11.1/msvc2022_64" >/tmp/cfg.log 2>&1 && cmake --build . --config Release 2>&1 | tail -3
 ```
 Expected: 0 error（libssh2 链接成功）。
 
@@ -442,7 +442,7 @@ git commit -m "feat: TelnetBackend 协议感知(setProtocol) + main.cpp 注册 S
 
 ```bash
 cd /d/persional/QtDeployMaster/build && cmake --build . --config Release 2>&1 | tail -3
-cd Release && export PATH="/c/Qt/6.10.1/msvc2022_64/bin:$PATH" && timeout 6 ./DeviceForge.exe >/dev/null 2>&1 & PID=$!; sleep 4; kill -0 $PID 2>/dev/null && echo ALIVE && kill $PID 2>/dev/null || echo EXITED
+cd Release && export PATH="/c/Qt/6.11.1/msvc2022_64/bin:$PATH" && timeout 6 ./DeviceForge.exe >/dev/null 2>&1 & PID=$!; sleep 4; kill -0 $PID 2>/dev/null && echo ALIVE && kill $PID 2>/dev/null || echo EXITED
 ```
 Expected: 0 error + ALIVE。
 

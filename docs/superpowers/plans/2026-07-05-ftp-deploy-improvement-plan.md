@@ -6,13 +6,13 @@
 
 **Architecture:** 4 个独立 Task，无相互依赖。FtpDeployWidget 移除端口 SpinBox，DeployMaster 统一日志命名 + 重建远端预览面板（协议选择器 + 设备同步）
 
-**Tech Stack:** Qt 6.10.1 Widgets, C++17, lwlog
+**Tech Stack:** Qt 6.11.1 Widgets, C++17, lwlog
 
 **Spec:** `docs/superpowers/specs/2026-07-05-ftp-deploy-improvement-design.md`
 
 ## Global Constraints
 
-- Qt 6.10.1 + C++17
+- Qt 6.11.1 + C++17
 - 中文注释和 UI 文案
 - 不新增第三方依赖
 - FtpManager / FtpAdapter / TelnetAdapter 本次不修改

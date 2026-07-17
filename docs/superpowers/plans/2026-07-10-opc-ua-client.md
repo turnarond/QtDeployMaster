@@ -106,7 +106,7 @@ target_link_libraries(DeviceForge PRIVATE open62541)
 
 - [ ] **Step 5: 验证 CMake 构建（快速语法检查）**
 
-Run: `cmake -S . -B build_test -DCMAKE_PREFIX_PATH="C:\Qt\6.10.1\msvc2022_64" -G "Visual Studio 17 2022" -A x64`
+Run: `cmake -S . -B build_test -DCMAKE_PREFIX_PATH="C:\Qt\6.11.1\msvc2022_64" -G "Visual Studio 17 2022" -A x64`
 Expected: CMake 配置无错误（不要求完整编译，只需确认 open62541 被识别）
 
 - [ ] **Step 6: 提交**
