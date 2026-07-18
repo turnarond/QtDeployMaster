@@ -10,6 +10,11 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QStatusBar>   // Task 5: 状态栏版本标签
+#include <QMenuBar>     // Task 5: 帮助菜单(检查更新)
+#include <QTimer>
+#include <QMouseEvent>       // Task 5: 延迟 5 秒自动检查
+#include <QAction>      // Task 5: 菜单项
 
 #include "OpcUaClient.h" // add header
 #include "src/tools/WebSocketTool/WebSocketWidget.h"
@@ -27,6 +32,9 @@
 #include "src/tools/TelnetTool/TelnetBackend.h"
 #include "src/tools/NetRelayTool/NetRelayWidget.h"
 #include "src/tools/NetRelayTool/NetRelayBackend.h"
+
+#include "src/updater/UpdateChecker.h"  // Task 5: 在线更新服务
+#include "src/updater/UpdateDialog.h"   // Task 5: 在线更新对话框
 
 DeployMaster::DeployMaster(QWidget* parent)
     : QMainWindow(parent)
@@ -73,6 +81,9 @@ DeployMaster::DeployMaster(QWidget* parent)
 
     // 初始化远端预览功能
     setupRemotePreview();
+
+    // 在线更新集成（Task 5）：菜单"帮助-检查更新" + 状态栏版本标签 + 5 秒后自动检查
+    setupUpdateChecker();
 }
 
 void DeployMaster::initToolTabs()
@@ -597,4 +608,190 @@ void DeployMaster::onDownloadRemoteFile()
             }, Qt::QueuedConnection);
         }
     });
+}
+
+// ============================================================
+// Task 5: 在线更新 UI 集成（菜单 + 状态栏版本标签）
+// ============================================================
+
+// 当前版本字串（用于状态栏显示），从 CMake 宏组装
+static QString currentVersionString() {
+    return QString("v%1.%2.%3")
+        .arg(DEVICEFORGE_VERSION_MAJOR)
+        .arg(DEVICEFORGE_VERSION_MINOR)
+        .arg(DEVICEFORGE_VERSION_PATCH);
+}
+
+// 初始化 UpdateChecker、状态栏版本标签、菜单栏"帮助-检查更新"
+// 并在 5 秒后自动触发一次检查
+void DeployMaster::setupUpdateChecker()
+{
+    m_updateChecker = std::make_shared<UpdateChecker>();
+    // 使用 CMake 编译宏设置当前版本,避免硬编码漂移
+    m_updateChecker->setCurrentVersion(
+        std::to_string(DEVICEFORGE_VERSION_MAJOR) + "." +
+        std::to_string(DEVICEFORGE_VERSION_MINOR) + "." +
+        std::to_string(DEVICEFORGE_VERSION_PATCH));
+    // UpdateChecker 内部业务用 QtConcurrent 异步执行,无需启动 ServiceTask 工作线程
+
+    // 状态栏版本标签（右侧永久挂件）
+    m_versionLabel = new QLabel(this);
+    m_versionLabel->setText(currentVersionString() + " (检查中...)");
+    m_versionLabel->setStyleSheet("color: #7B8494; padding: 0 8px;");
+    m_versionLabel->setCursor(Qt::PointingHandCursor); // 鼠标手型,提示可点击
+    // 版本标签可点击: 富文本(有新版本)时通过 linkActivated,纯文本时通过 eventFilter
+    connect(m_versionLabel, &QLabel::linkActivated, this, &DeployMaster::onVersionLabelClicked);
+    m_versionLabel->installEventFilter(this);
+    statusBar()->addPermanentWidget(m_versionLabel);
+
+    // 菜单栏: 帮助 -> 检查更新
+    QMenu* helpMenu = menuBar()->addMenu("帮助");
+    m_checkUpdateAction = helpMenu->addAction("检查更新...");
+    connect(m_checkUpdateAction, &QAction::triggered,
+            this, &DeployMaster::onCheckUpdateTriggered);
+
+    // 状态切换回调(UpdateChecker 在工作线程触发,通过 QueuedConnection 切回主线程)
+    m_updateChecker->setStateChangedCallback([this](UpdateState state) {
+        QMetaObject::invokeMethod(this, [this, state]() {
+            onUpdateStateChanged(state);
+        }, Qt::QueuedConnection);
+    });
+
+    // 下载进度回调
+    m_updateChecker->setProgressCallback(
+        [this](int pct, int64_t downloaded, int64_t total) {
+            QMetaObject::invokeMethod(this, [this, pct, downloaded, total]() {
+                if (m_updateDialog) {
+                    m_updateDialog->setProgress(pct, downloaded, total);
+                }
+            }, Qt::QueuedConnection);
+        });
+
+    // 错误回调（静默错误,更新 UI 状态到 Error）
+    m_updateChecker->setErrorCallback([this](const std::string& msg) {
+        QMetaObject::invokeMethod(this, [this, msg]() {
+            Q_UNUSED(msg);
+            if (m_updateDialog) {
+                m_updateDialog->setState(UpdateState::Error);
+            }
+            // 自动检查失败静默（spec §7: 不弹窗、不改变状态栏）
+            // 手动检查失败才显示 "检查失败"
+            if (!m_autoCheck) {
+                m_versionLabel->setText(currentVersionString() + " (检查失败)");
+                m_versionLabel->setStyleSheet("color: #7B8494; padding: 0 8px;");
+            }
+        }, Qt::QueuedConnection);
+    });
+
+    // 5 秒后自动触发一次后台检查,避免启动阻塞
+    QTimer::singleShot(5000, this, [this]() { m_autoCheck = true; onCheckUpdateTriggered(); });
+}
+
+// 用户点击菜单"检查更新"或 5 秒自动触发
+void DeployMaster::onCheckUpdateTriggered()
+{
+    if (!m_updateChecker) return;
+    m_checkUpdateAction->setEnabled(false);
+    m_updateChecker->checkForUpdate();
+    // autoCheck 标志由调用方（timer=auto / menu=manual）在调用前设置
+}
+
+// 状态机回调（主线程）— 切换状态栏标签 + 自动弹出 UpdateDialog
+void DeployMaster::onUpdateStateChanged(UpdateState state)
+{
+    if (!m_checkUpdateAction) return;
+
+    // 检查/下载中禁用菜单;其他状态可重新触发
+    m_checkUpdateAction->setEnabled(state != UpdateState::Checking &&
+                                     state != UpdateState::Downloading);
+
+    const QString ver = currentVersionString();
+
+    switch (state) {
+    case UpdateState::Checking:
+        m_versionLabel->setText(ver + " (检查中...)");
+        m_versionLabel->setStyleSheet("color: #7B8494; padding: 0 8px;");
+        m_checkUpdateAction->setText("检查更新...");
+        break;
+
+    case UpdateState::Ready: {
+        // 有新版本:标签切琴色 + 可点击;同时自动弹窗
+        ReleaseInfo info = m_updateChecker->releaseInfo();
+        QString tag = QString::fromStdString(info.tagName);
+        // 「琴色是动词」 — 仅信号态,使用琴色 #F0A030 提示可点击
+        m_versionLabel->setText(
+            QString("<a href='#' style='color:#F0A030;text-decoration:none;'>%1 可用 &#9662;</a>").arg(tag));
+        m_versionLabel->setTextFormat(Qt::RichText);
+        m_checkUpdateAction->setText("下载 " + tag + "...");
+
+        // 自动弹出对话框（首次创建）
+        if (!m_updateDialog) {
+            m_updateDialog = new UpdateDialog(m_updateChecker.get(), this);
+        }
+        m_updateDialog->setReleaseInfo(info);
+        m_updateDialog->setState(state);
+        m_updateDialog->show();
+        m_updateDialog->raise();
+        m_updateDialog->activateWindow();
+        break;
+    }
+
+    case UpdateState::Idle:
+        m_versionLabel->setText(ver + " (已是最新)");
+        m_versionLabel->setStyleSheet("color: #7B8494; padding: 0 8px;");
+        m_checkUpdateAction->setText("检查更新...");
+        break;
+
+    case UpdateState::Error:
+        // 自动检查失败静默,手动检查失败显示 "检查失败"
+        if (!m_autoCheck) {
+            m_versionLabel->setText(ver + " (检查失败)");
+            m_versionLabel->setStyleSheet("color: #7B8494; padding: 0 8px;");
+        }
+        m_checkUpdateAction->setText("检查更新...");
+        m_autoCheck = false;  // 重置标志
+        break;
+
+    case UpdateState::Downloading:
+        m_versionLabel->setText(ver + " (下载中...)");
+        m_versionLabel->setStyleSheet("color: #7B8494; padding: 0 8px;");
+        break;
+
+    case UpdateState::Installed:
+        m_versionLabel->setText(ver + " (已下载,待安装)");
+        m_versionLabel->setStyleSheet("color: #7B8494; padding: 0 8px;");
+        break;
+    }
+}
+
+// 点击状态栏版本标签 — 在已有可下载/已下载状态下重新唤起对话框
+void DeployMaster::onVersionLabelClicked()
+{
+    if (!m_updateChecker) return;
+    auto state = m_updateChecker->state();
+    if (state == UpdateState::Ready || state == UpdateState::Downloading ||
+        state == UpdateState::Installed) {
+        if (!m_updateDialog) {
+            m_updateDialog = new UpdateDialog(m_updateChecker.get(), this);
+        }
+        if (state == UpdateState::Ready) {
+            m_updateDialog->setReleaseInfo(m_updateChecker->releaseInfo());
+        }
+        m_updateDialog->setState(state);
+        m_updateDialog->show();
+        m_updateDialog->raise();
+        m_updateDialog->activateWindow();
+    }
+}
+
+ //eventFilter — 处理版本标签鼠标点击（非 RichText 状态下 label 不 emit linkActivated）
+bool DeployMaster::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == m_versionLabel && event->type() == QEvent::MouseButtonRelease) {
+        // 仅在非 Ready 状态且当前为纯文本时（富文本的 a href 走 linkActivated）
+        if (m_updateChecker && m_updateChecker->state() != UpdateState::Ready) {
+            onVersionLabelClicked();
+            return true;
+        }
+    }
+    return QMainWindow::eventFilter(watched, event);
 }

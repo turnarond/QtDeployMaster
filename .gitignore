@@ -368,3 +368,4 @@ build_release/
 dist/
 *.zip
 build_opc/
+DeployMaster.vcxproj.bak
