@@ -784,9 +784,6 @@ void DeployMaster::onViewRemoteFile()
 
     QString remotePath = item->data(Qt::UserRole).toString();
     QString fileName = item->data(Qt::UserRole + 3).toString();
-    qint64 fileSize = -1;
-    // 从显示文本提取大小（作为近似值，用于5MB限制检查）
-    QList<FtpFileInfo> dummy; // 我们需要从当前列表中获取大小，但这里先异步检查
 
     QString user = m_deviceBusWidget->user();
     QString pass = m_deviceBusWidget->password();
