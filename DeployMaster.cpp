@@ -42,6 +42,7 @@
 
 #include "src/updater/UpdateChecker.h"  // Task 5: 在线更新服务
 #include "src/updater/UpdateDialog.h"   // Task 5: 在线更新对话框
+#include "src/utils/FormatUtils.h"      // formatFileSize()
 
 DeployMaster::DeployMaster(QWidget* parent)
     : QMainWindow(parent)
@@ -479,12 +480,14 @@ void DeployMaster::refreshRemoteFiles()
     
     appendGlobalLog(QString("🔄 正在刷新远程文件列表: %1%2").arg(currentRemoteIP).arg(currentRemotePath));
     
-    // 异步刷新远程文件列表
+    // 异步刷新远程文件列表（按值捕获避免数据竞争）
+    QString ip = currentRemoteIP;
+    QString path = currentRemotePath;
     QtConcurrent::run([=]() {
         try {
-            FtpManager ftpm(currentRemoteIP, 21);
+            FtpManager ftpm(ip, 21);
             ftpm.setCredentials(user, pass);
-            QList<FtpFileInfo> files = ftpm.listFtpDirectoryDetailed(currentRemotePath);
+            QList<FtpFileInfo> files = ftpm.listFtpDirectoryDetailed(path);
             
             // 在主线程更新UI
             QMetaObject::invokeMethod(this, "buildRemoteFileTree", Qt::QueuedConnection, Q_ARG(QList<FtpFileInfo>, files));
@@ -493,21 +496,6 @@ void DeployMaster::refreshRemoteFiles()
             QMetaObject::invokeMethod(this, "appendGlobalLog", Qt::QueuedConnection, Q_ARG(QString, QString("❌ 刷新失败: %1").arg(QString::fromStdString(ex.what()).left(100))));
         }
     });
-}
-
-// 将字节数转为人类可读格式: B / KB / MB / GB
-static QString formatFileSize(qint64 bytes) {
-    if (bytes < 0) return "?";
-    if (bytes < 1024)
-        return QString::number(bytes) + " B";
-    double val = bytes / 1024.0;
-    if (val < 1024.0)
-        return QString::number(val, 'f', 1) + " KB";
-    val /= 1024.0;
-    if (val < 1024.0)
-        return QString::number(val, 'f', 1) + " MB";
-    val /= 1024.0;
-    return QString::number(val, 'f', 2) + " GB";
 }
 
 void DeployMaster::buildRemoteFileTree(const QList<FtpFileInfo>& files)
@@ -665,6 +653,7 @@ void DeployMaster::onDownloadRemoteFile()
     appendGlobalLog(QString("⬇ 开始下载 %1 个条目 → %2").arg(entries.size()).arg(localDir));
 
     // 全部在后台线程执行：先递归扫描目录，再逐文件下载
+    QString ip = currentRemoteIP;
     QtConcurrent::run([=]() {
         auto log = [this](const QString& msg) {
             QMetaObject::invokeMethod(this, "appendGlobalLog",
@@ -676,7 +665,7 @@ void DeployMaster::onDownloadRemoteFile()
         std::function<void(const QString&, const QString&, QList<FlatItem>&)> scanDir;
         scanDir = [&](const QString& dirPath, const QString& prefix, QList<FlatItem>& out) {
             try {
-                FtpManager ftm(currentRemoteIP, 21);
+                FtpManager ftm(ip, 21);
                 ftm.setCredentials(user, pass);
                 QList<FtpFileInfo> children = ftm.listFtpDirectoryDetailed(dirPath);
                 for (const auto& c : children) {
@@ -712,13 +701,13 @@ void DeployMaster::onDownloadRemoteFile()
         log(QString("共 %1 个文件待下载").arg(total));
 
         int success = 0, failed = 0;
+        FtpManager ftm(ip, 21);
+        ftm.setCredentials(user, pass);
         for (int i = 0; i < total; ++i) {
             const auto& f = allFiles[i];
             QString localPath = localDir + "/" + f.localName;
             QDir().mkpath(QFileInfo(localPath).absolutePath());
             try {
-                FtpManager ftm(currentRemoteIP, 21);
-                ftm.setCredentials(user, pass);
                 ftm.downloadFile(f.remotePath, localPath);
                 ++success;
                 log(QString("  [%1/%2] ✅ %3").arg(i + 1).arg(total).arg(f.localName));
@@ -789,10 +778,11 @@ void DeployMaster::onViewRemoteFile()
     QString pass = m_deviceBusWidget->password();
 
     appendGlobalLog("🔍 正在查看: " + fileName);
+    QString ip = currentRemoteIP;
     QtConcurrent::run([=]() {
         try {
             // 先列出目录获取文件大小
-            FtpManager ftm(currentRemoteIP, 21);
+            FtpManager ftm(ip, 21);
             ftm.setCredentials(user, pass);
             QString parentDir = remotePath.left(remotePath.lastIndexOf('/'));
             if (parentDir.isEmpty()) parentDir = "/";
@@ -866,11 +856,12 @@ void DeployMaster::onDeleteRemoteFile()
     QString pass = m_deviceBusWidget->password();
 
     appendGlobalLog(QString("🗑 正在删除 %1 个条目...").arg(items.size()));
+    QString ip = currentRemoteIP;
     QtConcurrent::run([=]() {
         int ok = 0, fail = 0;
         for (const auto& di : items) {
             try {
-                FtpManager ftm(currentRemoteIP, 21);
+                FtpManager ftm(ip, 21);
                 ftm.setCredentials(user, pass);
                 bool result = di.isDir
                     ? ftm.deleteFtpDirectory(di.parentDir, di.name)
@@ -906,9 +897,10 @@ void DeployMaster::onRenameRemoteFile()
     QString pass = m_deviceBusWidget->password();
 
     appendGlobalLog(QString("✏ 重命名: %1 → %2").arg(oldName, newName));
+    QString ip = currentRemoteIP;
     QtConcurrent::run([=]() {
         try {
-            FtpManager ftm(currentRemoteIP, 21);
+            FtpManager ftm(ip, 21);
             ftm.setCredentials(user, pass);
             bool result = ftm.renameFtpFile(currentRemotePath, oldName, newName);
             QMetaObject::invokeMethod(this, [this, oldName, newName, result]() {
@@ -1001,16 +993,16 @@ void DeployMaster::setupUpdateChecker()
     });
 
     // 5 秒后自动触发一次后台检查,避免启动阻塞
-    QTimer::singleShot(5000, this, [this]() { m_autoCheck = true; onCheckUpdateTriggered(); });
+    QTimer::singleShot(5000, this, [this]() { onCheckUpdateTriggered(true); });
 }
 
-// 用户点击菜单"检查更新"或 5 秒自动触发
-void DeployMaster::onCheckUpdateTriggered()
+// 用户点击菜单"检查更新"或 5 秒自动触发（isAuto: 自动检查静默失败）
+void DeployMaster::onCheckUpdateTriggered(bool isAuto)
 {
     if (!m_updateChecker) return;
+    m_autoCheck = isAuto;
     m_checkUpdateAction->setEnabled(false);
     m_updateChecker->checkForUpdate();
-    // autoCheck 标志由调用方（timer=auto / menu=manual）在调用前设置
 }
 
 // 状态机回调（主线程）— 切换状态栏标签 + 自动弹出 UpdateDialog

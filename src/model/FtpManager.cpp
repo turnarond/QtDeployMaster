@@ -509,9 +509,9 @@ bool FtpManager::renameFtpFile(const QString& parentDir, const QString& oldName,
     // RNFR + RNTO 必须在同一个 curl_slist 中按序发送
     struct curl_slist* commands = nullptr;
     commands = curl_slist_append(commands,
-        QString("RNFR %1").arg(oldPath).toUtf8().constData());
+        QString("RNFR \"%1\"").arg(oldPath).toUtf8().constData());
     commands = curl_slist_append(commands,
-        QString("RNTO %1").arg(newPath).toUtf8().constData());
+        QString("RNTO \"%1\"").arg(newPath).toUtf8().constData());
     curl_easy_setopt(curl, CURLOPT_QUOTE, commands);
 
     CURLcode res = curl_easy_perform(curl);

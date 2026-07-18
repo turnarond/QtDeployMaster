@@ -24,9 +24,6 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
-#include <fstream>
-#include <iostream>
-#include <map>
 #include <sstream>
 
 // JSON 简易解析：仅识别 GitHub Release / asset 对象
@@ -372,8 +369,12 @@ bool UpdateChecker::downloadZip(const ReleaseInfo& info, std::string& errorOut) 
         errorOut = "创建临时目录失败: " + tempDir();
         return false;
     }
-    m_zipPath = tempDir() + "/" + info.assetName;
-    if (m_zipPath.empty()) {
+    std::string zipPath = tempDir() + "/" + info.assetName;
+    {
+        std::lock_guard<std::mutex> lk(m_dataMutex);
+        m_zipPath = zipPath;
+    }
+    if (zipPath.empty()) {
         errorOut = "非法 zip 路径";
         return false;
     }
@@ -384,9 +385,9 @@ bool UpdateChecker::downloadZip(const ReleaseInfo& info, std::string& errorOut) 
         return false;
     }
 
-    FILE* fp = std::fopen(m_zipPath.c_str(), "wb");
+    FILE* fp = std::fopen(zipPath.c_str(), "wb");
     if (!fp) {
-        errorOut = "无法写入文件: " + m_zipPath;
+        errorOut = "无法写入文件: " + zipPath;
         curl_easy_cleanup(curl);
         return false;
     }
@@ -419,26 +420,30 @@ bool UpdateChecker::downloadZip(const ReleaseInfo& info, std::string& errorOut) 
 
     if (m_cancelled.load()) {
         errorOut = "用户已取消";
-        QFile::remove(QString::fromStdString(m_zipPath));
+        QFile::remove(QString::fromStdString(zipPath));
         return false;
     }
     if (res != CURLE_OK) {
         errorOut = std::string("下载失败: ") + curl_easy_strerror(res);
-        QFile::remove(QString::fromStdString(m_zipPath));
+        QFile::remove(QString::fromStdString(zipPath));
         return false;
     }
     if (httpCode != 200) {
         errorOut = "下载返回 HTTP " + std::to_string(httpCode);
-        QFile::remove(QString::fromStdString(m_zipPath));
+        QFile::remove(QString::fromStdString(zipPath));
         return false;
     }
-    if (info.assetSize > 0 && downloaded > 0 &&
-        std::abs(downloaded - info.assetSize) > 1024) {
-        // 允许 1KB 误差（部分 CDN 不返回精确字节）
-        errorOut = "下载大小不匹配: 期望 " + std::to_string(info.assetSize) +
-                   " 实际 " + std::to_string(downloaded);
-        QFile::remove(QString::fromStdString(m_zipPath));
-        return false;
+    if (info.assetSize > 0 && downloaded > 0) {
+        int64_t diff = (downloaded > info.assetSize)
+            ? (downloaded - info.assetSize)
+            : (info.assetSize - downloaded);
+        if (diff > 1024) {
+            // 允许 1KB 误差（部分 CDN 不返回精确字节）
+            errorOut = "下载大小不匹配: 期望 " + std::to_string(info.assetSize) +
+                       " 实际 " + std::to_string(downloaded);
+            QFile::remove(QString::fromStdString(zipPath));
+            return false;
+        }
     }
     return true;
 }
@@ -462,16 +467,26 @@ bool UpdateChecker::extractZip(const std::string& zipPath, const std::string& de
     // 这里用 PowerShell 一次性做解压（避免引入 zip 库）;
     // 防炸弹检查在解压后执行（解压后扫描文件树）
 
-    // 构造 PowerShell 命令
-    QString psCmd = QString("powershell.exe -NoProfile -NonInteractive -Command "
-                            "\"Expand-Archive -LiteralPath '%1' -DestinationPath '%2' -Force\"")
-                        .arg(QString::fromStdString(zipPath).replace("'", "''"),
-                             QString::fromStdString(destDir).replace("'", "''"));
-
-    // 同步执行（QtConcurrent::run 已在工作线程,这里直接调用）
-    int rc = std::system(psCmd.toStdString().c_str());
+    // 使用 QProcess 避免 cmd.exe shell 注入风险
+    QProcess ps;
+    ps.setProgram("powershell.exe");
+    ps.setArguments({
+        "-NoProfile", "-NonInteractive", "-Command",
+        QString("Expand-Archive -LiteralPath '%1' -DestinationPath '%2' -Force")
+            .arg(QString::fromStdString(zipPath).replace("'", "''"),
+                 QString::fromStdString(destDir).replace("'", "''"))
+    });
+    ps.start();
+    if (!ps.waitForFinished(120000)) { // 2 分钟超时
+        errorOut = "PowerShell Expand-Archive 超时";
+        ps.kill();
+        return false;
+    }
+    int rc = ps.exitCode();
     if (rc != 0) {
-        errorOut = "PowerShell Expand-Archive 失败,退出码 " + std::to_string(rc);
+        QString errText = QString::fromUtf8(ps.readAllStandardError());
+        errorOut = "PowerShell Expand-Archive 失败,退出码 " + std::to_string(rc)
+                   + ": " + errText.left(200).toStdString();
         return false;
     }
 
@@ -567,16 +582,15 @@ void UpdateChecker::downloadUpdate() {
             return;
         }
         // 解压到临时目录的 extract 子目录
+        std::string extractDir;
+        std::string zipPath;
         {
             std::lock_guard<std::mutex> lk(m_dataMutex);
             m_extractDir = tempDir() + "/extract";
-        }
-        std::string extractDir;
-        {
-            std::lock_guard<std::mutex> lk(m_dataMutex);
             extractDir = m_extractDir;
+            zipPath = m_zipPath;
         }
-        if (!extractZip(m_zipPath, extractDir, err)) {
+        if (!extractZip(zipPath, extractDir, err)) {
             reportError(err);
             return;
         }

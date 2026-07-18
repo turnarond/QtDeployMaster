@@ -40,7 +40,6 @@ private slots:
 
 private:
     void setupUi();
-    QString formatSize(int64_t bytes) const;
 
     UpdateChecker* m_checker;
     ReleaseInfo m_info;

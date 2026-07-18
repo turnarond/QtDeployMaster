@@ -9,6 +9,7 @@
  */
 #include "UpdateDialog.h"
 #include "UpdateChecker.h"
+#include "utils/FormatUtils.h"
 #include <QCloseEvent>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -82,7 +83,7 @@ void UpdateDialog::setupUi() {
 void UpdateDialog::setReleaseInfo(const ReleaseInfo& info) {
     m_info = info;
     m_newVersion->setText(QString("最新版本: %1").arg(QString::fromStdString(info.tagName)));
-    m_fileSize->setText(QString("文件大小: %1").arg(formatSize(info.assetSize)));
+    m_fileSize->setText(QString("文件大小: %1").arg(formatFileSize(info.assetSize)));
     m_releaseNotes->setMarkdown(QString::fromStdString(info.body));
 }
 
@@ -130,7 +131,7 @@ void UpdateDialog::setState(UpdateState state) {
 void UpdateDialog::setProgress(int pct, int64_t downloaded, int64_t total) {
     m_progress->setValue(pct);
     m_progressLabel->setText(
-        QString("已下载: %1 / %2").arg(formatSize(downloaded)).arg(formatSize(total)));
+        QString("已下载: %1 / %2").arg(formatFileSize(downloaded)).arg(formatFileSize(total)));
 }
 
 void UpdateDialog::onActionClicked() {
@@ -151,14 +152,6 @@ void UpdateDialog::onCancelClicked() {
         m_checker->cancelDownload();
     }
     close();
-}
-
-QString UpdateDialog::formatSize(int64_t bytes) const {
-    // 字节数自动转 B/KB/MB/GB
-    if (bytes < 1024) return QString::number(bytes) + " B";
-    if (bytes < 1024 * 1024) return QString::number(bytes / 1024.0, 'f', 1) + " KB";
-    if (bytes < 1024 * 1024 * 1024) return QString::number(bytes / (1024.0 * 1024.0), 'f', 1) + " MB";
-    return QString::number(bytes / (1024.0 * 1024.0 * 1024.0), 'f', 2) + " GB";
 }
 
 // 点击窗口标题栏 X 关闭 = 取消当前操作,状态回 idle

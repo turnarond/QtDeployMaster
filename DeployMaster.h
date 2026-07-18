@@ -85,7 +85,7 @@ private:
 
     // 在线更新集成（Task 5）
     void setupUpdateChecker();
-    void onCheckUpdateTriggered();
+    void onCheckUpdateTriggered(bool isAuto = false);
     void onVersionLabelClicked();
     void onUpdateStateChanged(UpdateState state);
     
