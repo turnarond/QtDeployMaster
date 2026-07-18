@@ -433,9 +433,13 @@ void DeployMaster::refreshDeviceCombo()
 
     ui.cmb_targetIPs->blockSignals(false);
 
+    // 确保 currentRemoteIP 与 combo box 同步（setCurrentIndex(idx) 时信号被屏蔽）
+    currentRemoteIP = ui.cmb_targetIPs->currentText();
+
     // 如果之前无选中但列表不空，自动选中第一个并刷新
     if (ui.cmb_targetIPs->currentIndex() < 0 && ui.cmb_targetIPs->count() > 0) {
         ui.cmb_targetIPs->setCurrentIndex(0);
+        currentRemoteIP = ui.cmb_targetIPs->currentText();
         refreshRemoteFiles();
     }
 }
