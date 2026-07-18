@@ -21,7 +21,7 @@
 
 - 中文注释和 UI 文案
 - 类名 PascalCase，方法 camelCase，成员变量 `m_camelCase`
-- 修改接口/架构时同步更新 `docs/superpowers/` 文档
+- 修改接口/架构时同步更新 `docs/` 对应文档
 
 ## 提交规范
 

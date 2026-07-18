@@ -73,7 +73,7 @@ darkstyle.qss 深色主题      ToolWidget (基类)          └─ ProtocolRegi
   AppState                   ServiceTask               libcurl / QTcpSocket
 ```
 
-**设计文档**：[架构设计](docs/superpowers/specs/2026-07-04-tool-framework-design.md) | [实施计划](docs/superpowers/plans/2026-07-04-tool-framework-plan.md)
+**文档**：[架构设计](docs/03-架构与接口/架构设计.md) | [用户手册](docs/04-构建与部署/用户手册.md) | [构建指南](docs/04-构建与部署/构建指南.md) | [路线图](docs/ROADMAP.md)
 
 ### 第三方库
 

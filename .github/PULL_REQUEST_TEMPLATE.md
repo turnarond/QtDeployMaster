@@ -17,5 +17,5 @@
 
 - [ ] 代码符合项目风格（中文注释、命名规范）
 - [ ] 已在 Windows + Qt 6.10.1 上编译通过
-- [ ] 相关文档已更新（README / CLAUDE.md / docs/superpowers/）
+- [ ] 相关文档已更新（README / CLAUDE.md / docs/）
 - [ ] 无新增编译警告
